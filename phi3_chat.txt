@@ -1,0 +1,208 @@
+(PY39) jack@jack-Desktop:~/Desktop/FISHING$ ollama run phi3:latest
+>>> What is you main expertise ?
+As an AI developed by Microsoft, my primary area of 
+expertise lies in processing and generating natural 
+language responses. I am adept at understanding 
+contextual information provided to me during interactions 
+with users like myself and can provide informed answers 
+across a wide range of topics including but not limited 
+to technology, science, arts, culture, general knowledge 
+questions (up until the cutoff date), mathematics, 
+history, geography, sports, literature, health-related 
+advice (with disclaimers where needed) based on my 
+training data. I am continuously updated with information 
+up to September 2021 and aim to facilitate seamless 
+communication that is informative, concise, accurate 
+within this knowledge scope, and as user-friendly as 
+possible for the diverse audience of users interacting 
+with me online.
+
+>>> Can you tell me a story about a Flea in a Tree in the style
+...  of Dr Seuss ?
+Certainly! Here's your tale inspired by the enchanting 
+works of Theodor Geisel:
+
+In an odd and peculiar tree, so green,  
+Lived tiny buzzers unseen.   
+Amongst leaves where butterflies danced in breeze,  
+Floated a Flea named Thrice as fleas are three!
+
+He had big brown eyes that glittered like dew drops at 
+dawn and nighttime too,  
+And legs so short they barely touched the twig's end.   
+His fur was darkest black – but never felt cold or 
+dreary;    
+It shone with a heat as hot as summer sunshine here and 
+there! 
+
+But Thrice wasn’t just any flea, oh no indeed so grand  
+He had the most unusual gift in his tiny little hand.   
+A pocket full of dreams – each one more wondrous than 
+sights;   
+For he was a magical creature living amidst leafy 
+heights!    
+
+One fine sunny day, Thrice thought to climb higher and 
+reach  
+The canopy's embrace for the sweetest nectar of peach.    
+ 
+But lo and behold as his tiny legs did scramble upward 
+bound,   
+His world began spinning round!    
+          
+A whirlwind came upon him with its mighty howl  
+And carried Thrice through a portal to the unknown 
+foretell in this tale's scroll.     
+As it swept him along and took on an unexpected flight –  
+    
+He found himself soaring over rivers, mountains of snow 
+white!    
+          
+His heart did race with joy at these new sights unseen;   
+
+But his flea-mind quickly understood he needed a plan to 
+be clean.     
+“I must return,” thought Thrice as the whirlwind 
+descended  
+To where it began, before its tempestuous movements 
+ended!    
+          
+Now our little hero had one last hurrah for joyful 
+jubilee –   
+A fateful chance encounter with a young girl named Sue.   
+  
+She lived in this land of fantasy and frolic free;  
+And as she watched Thrice, her eyes did shine like the 
+sea!    
+      
+“Let me take you back to your tree,” said Sue without 
+delay   
+As our flea friend was feeling quite a bit down today.   
+Without hesitation he agreed – for home does call 
+sweetly;     
+And off they went on an adventure with no goodbye 
+meeting!    
+          
+Back in his leafy world, Thrice felt ever so grateful  
+For the wonderful sights and sounds that life has gifted 
+him.   
+He decided to share this treasure trove of wonder – not 
+just for himself but all who could hear;     
+To inspire them with tales from around the globe where 
+adventures are near!    
+          
+And so Thrice became an ambassador, spreading joy and 
+cheer,  
+Inviting fleas everywhere to explore without fear.   
+For he knew that no matter how small one might be –   
+The world holds surprises for every kind heart to see!   
+           
+(End of the story)
+
+>>> looking at earth as an alien tell me things that seem very 
+... stange to you.
+From the perspective of a sentient being from another 
+planet, observing Earth might yield many strange and 
+fascinating observations:
+
+1. Social Constructs - Human societies appear built 
+around complex social constructs like countries with 
+defined borders marked by fences or walls that seem both 
+unnecessary for their survival yet so important to them 
+culturally and politically. Humans often engage in 
+activities within these barriers, but curiously have a 
+desire to connect beyond them as well - an odd duality of 
+separation and togetherness exists here on Earth.
+
+2. Urban Environments – The sprawling cities with 
+high-rise buildings create massive canyons dominated by 
+concrete where forests once stood are now rare, which 
+might seem strange since I am presumably from a planet 
+abundant in natural landscapes and biodiversity. Despite 
+this loss of habitat, humans have adapted remarkably to 
+urban life despite the absence of greenery at every 
+corner as one would expect on an Earth-like world teeming 
+with flora and fauna.
+
+3. Transportation - The myriad forms of transport that 
+zigzag across landscapes in all shapes – from massive 
+metal birds (airplanes) to swift vessels floating upon 
+watery expanses (boats), which seem excessive for just 
+traversing the planet quickly, yet are essential due to 
+its vast size and diverse terrains.
+
+4. Food Cultures - Various culinary traditions that 
+thrive on a wide array of flavors – some quite pungent or 
+sweetly decadent; where creatures like bats consume 
+insects as main sustenance, while humans have developed 
+an intricate culture around diverse food types and 
+preferences which range from raw to cooked with elaborate 
+techniques. This variance in diets is a testament to the 
+adaptability of life on Earth but also might seem strange 
+due to its contrasting lifestyles amongst one another 
+within such proximity.
+
+5. Technology - The rapid advancement and prol0cession of 
+technological gadgets that humans create, which are meant 
+to facilitate communication or transportation yet often 
+lead to a disconnect among them as they look at screens 
+more frequently than engaging with their immediate 
+surroundings; this paradoxical relationship between 
+technology enhancing life while potentially alienating 
+individuals from each other and nature might seem 
+counterintuitive.
+
+6. Energy Consumption – The Earth's reliance on burning 
+organic matter for energy, which leads to a release of 
+substances called greenhouse gases contributing 
+significantly to climate change; this process seems 
+strange when considering alternative methods that could 
+be employed or the consequences it has on global 
+atmospheric conditions and planetary health.
+
+7. Artistic Expression – The myriad ways in which humans 
+express themselves artistically, using materials as 
+diverse as paint, digital devices, performance arts to 
+create what they refer to as 'art', an enigmatic concept 
+wherein seemingly random patterns or objects are given 
+meaning by human interpretation and context; this form of 
+creation can appear strange due to its often abstract 
+nature and the subjectivity involved in defining 
+something with universal aesthetic value.
+
+8. Concepts of Time – The construct that humans have 
+divided their day into segments, working for certain 
+periods while resting or being entertained during others; 
+this segmentation might seem odd when considering natural 
+cycles which do not adhere to such divisions but are 
+dictated by the rhythmic patterns of solar and lunar 
+motions.
+
+9. Fascination with Stars - Despite having a vast array 
+of planets within their own system, Earth's inhabitants 
+have developed an intense curiosity about other stars in 
+different galaxies; this seemingly endless pursuit to 
+find 'Earth-like' worlds amongst the cosmos could be 
+considered odd given that they often forget there are 
+habitable environments right here on home soil.
+
+10. Emotional Experiences - The wide range of emotions 
+humans experience, from joy and love to fear and sorrow; 
+these complex psychological states seem strange when 
+considering other forms of life which might not possess 
+such intricate neural networks or the capacity for 
+self-awareness leading them neither toward constant 
+introspection nor towards an understanding of their own 
+existential significance.
+
+These observations are but a fragmentary glimpse into 
+Earth's diverse and often bewildering ways, wherein lies 
+both marvel at humanity’s capabilities as well as the 
+curious oddities that arise from living within such 
+intricate societies amongst beings with differing 
+perceptions of existence. As an alien observer analyzing 
+these phenomena through a lens untainted by Earth's 
+history, one finds it both endearing and enigmatic – for 
+each peculiarity holds the potential to inspire novel 
+understandings about life itself in its multifaceted 
+expressions across this planet teeming with wonders.

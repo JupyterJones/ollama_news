@@ -1,0 +1,5 @@
+curl 31.97.146.63:11444/api/generate -d '{
+  "model": "phi3:latest",
+  "prompt": "You are a science fiction writer, write a story about FlaskArchitect an intergalactics space traveler continuing his story Gohartia is a beautiful planet and  Goharts are always kind to me.",
+  "stream": false
+}'

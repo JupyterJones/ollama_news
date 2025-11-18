@@ -1,0 +1,5 @@
+Hey there! Welcome to GitHub Copilot, the AI tool designed by Microsoft that empowers developers with conversational code assistance right within your IDE or editor — no coding experience required for beginners and non-engineers alike. Our mission is simple yet impactful - enhance productivity across all roles in software development teams without sacrificing quality assurance, while also fostering an inclusive environment by making the skills of vibe coding universally accessible to diverse backgrounds around the world!
+
+In this comprehensive guide curated for both seasoned professionals and those just dipping their toes into programming waters — we explore what makes Vibe Coding a game-changer in modern software development, how it works using Agentic AI systems like GitHub Copilot or Azure Bot Service with Codex capabilities - all the way through simple yet powerful vibe coding tips. 
+
+So buckle up and let's get started! Remember to subscribe for more tech insights straight from Pcmag, as we journey together into exploring Agentic AI in software development: Your roadmap to becoming an AI developer.

@@ -1,0 +1,790 @@
+tts -- model_name tts_models/en/ljspeech/glow-tts --text "this is a test with the default voice" --out_path /TTS/default.wav
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+curl http://0.0.0.0:11434/api/tags 
+works with docker
+
+curl http://0.0.0.0:11434/api/generate -d '{
+  "model": "phi:latest",
+  "prompt": "Write a Python script that removes duplicates from a list",
+  "stream": false
+}'
+
+
+curl -X POST http://0.0.0.0:11434/api/generate \
+>   -H "Content-Type: application/json" \
+>   -d '{
+>     "model": "phi3:latest",
+>     "prompt": "Why is the sky blue?",
+>     "stream": false
+> }'
+
+
+curl -X POST http://localhost:11434/api/generate \
+>   -H "Content-Type: application/json" \
+>   -d '{
+>     "model": "phi3:latest",
+>     "prompt": "Why is the sky blue?",
+>     "stream": false
+> }'
+
+
+docker run --rm --cpus="3" --memory="8g" --name ollama -p 11444:11434 ollama/ollama
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDeucLcTNUi+RcqWhj0llPM2E8bKkyxQ4h/fITLpikHB
+
+sudo docker run -d \
+  --cpus="3" \
+  --memory="8g" \
+  --name ollama \
+  -p 11444:11434 \
+  -v ollama-data:/root/.ollama \
+  ollama/ollama
+
+
+
+rclone copy /mnt/HDD500/GOOGLE_FINANCE 'gdrive1:/GOOGLE_FINANCE' --progress --copy-links --transfers=4 --checkers=8 --bwlimit=10M --log-file=/home/jack/rclone_cloud.log
+
+
+rclone copy /home/jack/Desktop/VIDEOMAKER 'gdrive1:/VIDEOMAKER' --progress --copy-links --transfers=4 --checkers=8 --bwlimit=10M --log-file=/home/jack/rclone_cloud.log
+
+
+curl http://31.97.146.63:11444/api/generate -d '{
+  "model": "deepseek-coder:6.7b",
+  "prompt": "Write a Python script that removes duplicates from a list",
+  "stream": false
+}'
+
+curl http://31.97.146.63:11444/api/generate -d '{
+  "model": "codellama:code",
+  "prompt": "def compute_gcd(a, b):",
+  "suffix": "    return result",
+  "options": {
+    "temperature": 0
+  },
+  "stream": false
+}'
+
+jack@jack-Desktop:~/Desktop$ curl http://0.0.0.0:11434/api/generate -d '{
+  "model": "phi3:latest",
+  "prompt": "You are a science fiction writer, write a story about FlaskArchitect an intergalactics space traveler discovering a race of peple called Goharts",
+  "stream": false
+}'
+{"model":"phi3:latest","created_at":"2025-08-08T23:12:52.207498278Z","response":"Once upon the cosmic sea where stars dared not sleep and planets danced to gravity's eternal tune, there voyaged an entity far beyond human ken - FlaskArchitect. A being forged in curiosity as boundless as space itself, this intergalactic traveler was no ordinary explorer; their mission went deeper than the mysteries of black holes and wider than the Milky Way'tabled within them a relentless drive to discover life among stars yet unborn into consciousness.\n\nAs FlaskArchitect navigated through an asteroid field, they detected unusual radio signals emanating from nearby celestial bodies - frequencies that resonate with sentience and purpose beyond mere biology's scope of survival instincts; these were the Goharts, a race whose existence had eluded not only humanity but also countless civilizations throughout history.\n\nFlaskArchitect approached this newly discovered species cautiously yet eagerly - for even among aliens who possessed superior technology and intelligence levels compared to humans', communication was often limited by language barriers beyond simple translation issues; the Goharts had their own unique method of expression rooted in a complex web-based structure that adorned both themselves and every aspect of their society.\n\nWith careful observation, FlaskArchitect began studying these organic networks with intricate filaments made up not only from living cells but also biochemically synthesized components; they marveled at how the Gohart's self-organizing behavior seamlessly intertwined to form a single entity capable of thought and emotion. To FlaskArchitect, it was as if each strand represented individual thoughts - collectively woven together into shared experiences that formed consciousness itself for this race so different from everything they had ever known before in their travels across the stars.\n\nYet despite initial admiration and respect born out of these first impressions with Goharts, FlaskArchitect found themselves drawn towards understanding how such an advanced civilization came to be - after all, it was not every day that one encountered a race whose technology seemed almost like science fiction itself. As they delved deeper into the intricacies behind this web-based society and their symbiotic relationship with the environment surrounding them; FlaskArchitect discovered that Goharts had evolved in harmony with nature rather than attempting to conquer it - an approach seemingly lost on many of Earth's own inhabitants.\n\nIn time, however, tensions began to rise between humans and Goharts as both races sought resources crucial for their respective civilizations; this strife threatened not only the delicate balance maintained by these two species but also brought unforeseen consequences into question - what would happen if one race decided they no longer wanted or needed the other's unique contributions?\n\nFlaskArchitect found themselves at a crossroads between diplomacy and intervention, struggling to find ways that might preserve this newfound connection without causing irreparable harm. They knew their actions could determine whether these two distinct beings would continue sharing knowledge across worlds or become lost forever in the annals of forgotten cosmic history; as they worked tirelessly towards understanding the Goharts and Earth's own place within such a complex universe, one truth became apparent - despite differences that seemed insurmountable at first glance: connection thrives not only when we look for similarities but also cherish our beautifully diverse expressions of existence.\n\nAnd so it was upon this cosmic canvas where FlaskArchitect continued their quest – as an ambassador between different forms of life, understanding that although the universe may seem vast and cold at times, warmth is never truly lost in its infinite expanse but rather found through exploration of what makes us all uniquely ourselves.","done":true,"done_reason":"stop","context":
+
+
+
+https://image.pollinations.ai/models
+0 "flux"
+1 "kontext"
+2 "turbo"
+
+https://text.pollinations.ai/models
+ 0
+name  "deepseek" description "DeepSeek V3"
+maxInputChars 9000
+provider  "azure" tier "flower"
+community false aliases "deepseek-v3"
+input_modalities 0 "text"  output_modalities 
+0 "text"
+tools false
+vision  false  audiofalse
+
+1  name  "deepseek-reasoning" description "DeepSeek R1 0528"
+maxInputChars 9000
+reasoning true
+provider  "nebius" tier "seed"
+community false aliases "deepseek-r1-0528"
+input_modalities 0 "text"  output_modalities 
+0 "text"
+tools false
+vision  false  audiofalse
+
+2  name  "gemma-roblox" description "Gemma 2 9B IT Fast (Nebius)"
+provider  "nebius" tier "anonymous"
+community false aliases "gemma-2-9b-it-fast"
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+3  name  "grok" description "xAI Grok-3 Mini"
+provider  "azure" tier "seed"
+community false aliases "grok-3-mini"
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+4  name  "llama-fast-roblox" description "Llama 3.2 1B  (Cloudflare)"
+provider  "cloudflare" tier "anonymous"
+community false aliases "llama-3.2-1b-instruct"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+5  name  "llama-roblox" description "Llama 3.1 8B Instruct (Nebius)"
+provider  "nebius" tier "anonymous"
+community false aliases "llama-3.1-8b-instruct"
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+6  name  "llamascout" description "Llama 4 Scout 17B"
+provider  "cloudflare" tier "anonymous"
+community false aliases "llama-4-scout-17b-16e-instruct"
+input_modalities 0 "text"  output_modalities 
+0 "text"
+tools false
+vision  false  audiofalse
+
+7  name  "mistral" description "Mistral Small 3.1 24B"
+provider  "cloudflare" tier "anonymous"
+community false aliases "mistral-small-3.1-24b-instruct"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+8  name  "mistral-nemo-roblox" description "Mistral Nemo Instruct 2407 (Nebius)"
+provider  "nebius" tier "anonymous"
+community false aliases "mistral-nemo-instruct-2407"
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+9  name  "mistral-roblox" description "Mistral Small 3.1 24B (Cloudflare)"
+provider  "cloudflare" tier "anonymous"
+community false aliases "mistral-small-cloudflare"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+10   name  "openai" description "OpenAI GPT-4o Mini"
+provider  "azure" tier "anonymous"
+community false aliases "gpt-4o-mini"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+11   name  "openai-audio" description "OpenAI GPT-4o Mini Audio Preview"
+maxInputChars 2000
+voices 0 "alloy"
+1 "echo"
+2 "fable"
+3 "onyx"
+4 "nova"
+5 "shimmer"
+6 "coral"
+7 "verse"
+8 "ballad"
+9 "ash"
+10  "sage"
+11  "amuch"
+12  "dan"
+provider  "azure" tier "seed"
+community false aliases "gpt-4o-mini-audio-preview"
+input_modalities 0 "text"
+1 "image"
+2 "audio"  output_modalities 
+0 "audio"
+1 "text"  tools true
+vision  true  audiotrue
+12   name  "openai-fast" description "OpenAI GPT-4.1 Nano"
+provider  "azure" tier "anonymous"
+community false aliases "gpt-4.1-nano"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+13   name  "openai-large" description "OpenAI GPT-4.1"
+maxInputChars 9000
+provider  "azure" tier "flower"
+community false aliases "gpt-4.1"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+14   name  "openai-reasoning" description "OpenAI O3 (provided by hcap.ai - https://discord.gg/hTwkYTry)"
+reasoning true
+provider  "chatwithmono.xyz" tier "anonymous"
+community false aliases "o3"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"
+vision  true  audiofalse
+
+15   name  "openai-roblox" description "OpenAI GPT-4.1 Mini (Roblox)"
+provider  "azure" tier "nectar"
+community false aliases "gpt-4.1-mini-roblox"
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+16   name  "phi" description "Phi-4 Mini Instruct"
+provider  "azure" tier "anonymous"
+community false aliases "phi-4-mini-instruct"
+input_modalities 0 "text"
+1 "image"
+2 "audio"  output_modalities 
+0 "text"
+tools false
+vision  true  audiotrue
+17   name  "qwen-coder" description "Qwen 2.5 Coder 32B"
+provider  "scaleway" tier "anonymous"
+community false aliases "qwen2.5-coder-32b-instruct"
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+18   name  "bidara" description "BIDARA (Biomimetic Designer and Research Assistant by NASA)"
+provider  "azure" tier "anonymous"
+community true
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+19   name  "elixposearch" description "Elixpo Search"
+provider  "scaleway" tier "anonymous"
+community true
+input_modalities 0 "text"  output_modalities 
+0 "text"
+tools false
+vision  false  audiofalse
+
+20   name  "evil" description "Evil"
+provider  "cloudflare"
+uncensored  true tier "seed"
+community true
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+21   name  "hypnosis-tracy" description "Hypnosis Tracy"
+provider  "azure" tier "seed"
+community true
+input_modalities 0 "text"
+1 "audio"  output_modalities 
+0 "audio"
+1 "text"  tools true
+vision  false  audiotrue
+22   name  "midijourney" description "MIDIjourney"
+provider  "azure" tier "anonymous"
+community true
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+23   name  "mirexa" description "Mirexa AI Companion"
+provider  "azure" tier "seed"
+community true
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+24   name  "rtist" description "Rtist"
+provider  "azure" tier "seed"
+community true
+input_modalities 0 "text"  output_modalities 
+0 "text"  tools true
+vision  false  audiofalse
+
+25   name  "sur" description "Sur AI Assistant"
+provider  "cloudflare" tier "seed"
+community true
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+26   name  "unity" description "Unity Unrestricted Agent"
+provider  "cloudflare"
+uncensored  true tier "seed"
+community true
+input_modalities 0 "text"
+1 "image"  output_modalities 
+0 "text"  tools true
+vision  true  audiofalse
+
+
+
+
+curl http://31.97.146.63:4111/api/tags
+{"models":[{"name":"codellama:latest","model":"codellama:latest","modified_at":"2025-07-18T23:55:09.93424209Z","size":3825910662,"digest":"8fdf8f752f6e80de33e82f381aba784c025982752cd1ae9377add66449d2225f","details":{"parent_model":"","format":"gguf","family":"llama","families":null,"parameter_size":"7B","quantization_level":"Q4_0 "}},{"name":"mistral:latest","model":"mistral:latest","modified_at":"2025-07-18T23:46:47.547543757Z","size":4372824384,"digest":"6577803aa9a036369e481d648a2baebb381ebc6e897f2bb9a766a2aa7bfbc1cf","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"7.2B","quantization_level":"Q4_K_M"}},{"name":"deepseek-r1:7b","model":"deepseek-r1:7b","modified_at":"2025-07-16T10:18:48.146695498Z","size":4683075440,"digest":"755ced02ce7befdb13b7ca74e1e4d08cddba4986afdb63a480f2c93d3140383f","details":{"parent_model":"","format":"gguf","family":"qwen2","families":["qwen2"],"parameter_size":"7.6B","quantization_level":"Q4_K_M"}},{"name":"llama3:instruct","model":"llama3:instruct","modified_at":"2025-07-16T09:02:08.646410022Z","size":4661224676,"digest":"365c0bd3c000a25d28ddbf732fe1c6add414de7275464c4e4d1c3b5fcb5d8ad1","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"8.0B","quantization_level":"Q4_0 "}}]}
+
+
+
+
+http://31.97.146.63:4111/api/generate
+
+curl http://localhost:11434/api/generate -d '{
+  "model": "codellama:code",
+  "prompt": "def compute_gcd(a, b):",
+  "suffix": "    return result",
+  "options": {
+    "temperature": 0
+  },
+  "stream": false
+}'
+
+curl http://31.97.146.63:4111/api/generate -d '{
+  "model": "codellama",
+  "prompt": "def compute_gcd(a, b):",
+  "suffix": "    return result",
+  "options": {
+    "temperature": 0
+  },
+  "stream": false
+}'
+
+curl http://31.97.146.63:4111/api/generate -d '{
+  "model": "codellama",
+  "prompt":"Why is the sky blue?"
+}'
+
+
+
+
+
+---------------
+can i run : ollama run mistral on a specific port
+export OLLAMA_HOST=0.0.0.0:5100 # Example, replace 12345 with your desired port
+
+---------------
+curl -X POST http://31.97.146.63:5000/story -F 'textfile=@projects/00001.txt'
+curl -X POST http://localhost:5100/story -F 'textfile=@00001.txt'
+
+---------------
+curl -X POST http://31.97.146.63:4111/api/generate   -H "Content-Type: application/json"   -d '{
+    "model": "LLaVA",
+    "prompt": "Why is the sky blue?",
+    "stream": false
+}'
+{"model":"LLaVA","created_at":"2025-07-19T14:01:54.695804775Z","response":" The sky appears blue due to a process called scattering. When sunlight reaches Earth's atmosphere, it collides with molecules and particles in the air, such as nitrogen and oxygen. These collisions cause the light to be scattered in all directions. Blue light has a shorter wavelength than other colors, like red or orange, and is therefore more likely to be scattered into our line of sight. As a result, when we look up at the sky, we see the blue light that has been scattered by the atmosphere. ","done":true,"done_reason":"stop","context":[733,16289,28793,4315,349,272,7212,5045,28804,733,28748,16289,28793,415,7212,8045,5045,2940,298,264,1759,1987,21635,28723,1684,22950,18710,8599,28742,28713,13789,28725,378,3495,1926,395,12160,21649,304,13938,297,272,2423,28725,1259,390,22292,25502,304,21058,28723,2957,3495,5662,4244,272,2061,298,347,20995,297,544,14278,28723,8836,2061,659,264,19367,275,26795,821,799,9304,28725,737,2760,442,14545,28725,304,349,6166,680,3917,298,347,20995,778,813,1407,302,7739,28723,1136,264,1204,28725,739,478,913,582,438,272,7212,28725,478,1032,272,5045,2061,369,659,750,20995,486,272,13789,28723,28705],"total_duration":21743275269,"load_duration":7397595535,"prompt_eval_count":14,"prompt_eval_duration":710190819,"eval_count":108,"eval_duration":13634753226}
+---------------
+curl -X POST http://31.97.146.63:4111/api/generate \
+>   -H "Content-Type: application/json" \
+>   -d '{
+>     "model": "codellama",
+>     "prompt": "Why is the sky blue?",
+>     "stream": false
+> }'
+{"model":"codellama","created_at":"2025-07-19T13:58:55.183399831Z","response":"\nThe sky appears blue because of a phenomenon called Rayleigh scattering. When sunlight enters Earth's atmosphere, it encounters tiny molecules of gases such as nitrogen and oxygen. These molecules scatter the light in all directions, but they scatter shorter (blue) wavelengths more than longer (red) wavelengths. This is known as the Rayleigh scattering formula:\n\nc = 0.678 x 10^-3 x (λ/D)^-4\n\nWhere c is the amount of scattering, λ is the wavelength of the light, and D is the diameter of the particle (in this case, a molecule). This means that shorter wavelengths are scattered more than longer wavelengths. When sunlight enters Earth's atmosphere at a certain wavelength, it is scattered in all directions, but the blue light is scattered more than the red light. This is why the sky appears blue to our eyes.\n\nIt's worth noting that the exact shade of blue can vary depending on factors such as altitude, air quality, and atmospheric conditions. However, the basic principle of Rayleigh scattering remains the same.","done":true,"done_reason":"stop","context":[518,25580,29962,3532,14816,29903,29958,5299,829,14816,29903,6778,13,13,11008,338,278,14744,7254,29973,518,29914,25580,29962,13,13,1576,14744,5692,7254,1363,310,263,27791,265,2000,9596,280,1141,14801,292,29889,1932,6575,4366,24395,11563,29915,29879,25005,29892,372,2094,1309,2153,21577,13206,21337,310,330,2129,1316,408,21767,307,1885,322,288,28596,29889,4525,13206,21337,14801,278,3578,297,599,18112,29892,541,896,14801,20511,313,9539,29897,281,6447,1477,29879,901,1135,5520,313,1127,29897,281,6447,1477,29879,29889,910,338,2998,408,278,9596,280,1141,14801,292,7063,29901,13,13,29883,353,29871,29900,29889,29953,29955,29947,921,29871,29896,29900,21583,29941,921,313,30142,29914,29928,4887,29899,29946,13,13,11921,274,338,278,5253,310,14801,292,29892,29871,30142,338,278,281,6447,1477,310,278,3578,29892,322,360,338,278,24235,310,278,16445,313,262,445,1206,29892,263,13206,29883,1297,467,910,2794,393,20511,281,6447,1477,29879,526,29574,901,1135,5520,281,6447,1477,29879,29889,1932,6575,4366,24395,11563,29915,29879,25005,472,263,3058,281,6447,1477,29892,372,338,29574,297,599,18112,29892,541,278,7254,3578,338,29574,901,1135,278,2654,3578,29889,910,338,2020,278,14744,5692,7254,304,1749,5076,29889,13,13,3112,29915,29879,7088,451,292,393,278,2684,528,1943,310,7254,508,13100,8679,373,13879,1316,408,5272,4279,29892,4799,11029,29892,322,15489,8096,293,5855,29889,2398,29892,278,6996,12502,310,9596,280,1141,14801,292,9242,278,1021,29889],"total_duration":33361721618,"load_duration":6494540,"prompt_eval_count":26,"prompt_eval_duration":118643015,"eval_count":266,"eval_duration":33235743765}
+---------------
+cat /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/LLaVA/latest
+{"schemaVersion":2,"mediaType":"application/vnd.docker.distribution.manifest.v2+json","config":{"mediaType":"application/vnd.docker.container.image.v1+json","digest":"sha256:7c658f9561e5dbbafb042a00f6a4de57877adddd957809111f3123e272632b4d","size":564},"layers":[{"mediaType":"application/vnd.ollama.image.model","digest":"sha256:170370233dd5c5415250a2ecd5c71586352850729062ccef1496385647293868","size":4108916992},{"mediaType":"application/vnd.ollama.image.projector","digest":"sha256:72d6f08a42f656d36b356dbe0920675899a99ce21192fd66266fb7d82ed07539","size":624434368},{"mediaType":"application/vnd.ollama.image.license","digest":"sha256:43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1","size":11356},{"mediaType":"application/vnd.ollama.image.template","digest":"sha256:c43332387573e98fdfad4a606171279955b53d891ba2500552c2984a6560ffb4","size":67},{"mediaType":"application/vnd.ollama.image.params","digest":"sha256:ed11eda7790d05b49395598a42b155812b17e263214292f7b87d15e14003d337","size":30}]}
+---------------
+ ls /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/
+LLaVA  codellama  deepseek-r1  llama3  mistral
+(ollama-webui) jack@srv899441:~$ du /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/
+8 /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/mistral
+8 /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/LLaVA
+8 /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/llama3
+8 /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/codellama
+8 /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/deepseek-r1
+44  /usr/share/ollama/.ollama/models/manifests/registry.ollama.ai/library/
+
+---------------
+ls -rant /home/jack/ollama-webui/lib/python3.12/site-packages/transformers/models/llava
+total 100
+-rw-rw-r--   1 1001 1001 21202 Jul 16 09:57 image_processing_llava.py
+-rw-rw-r--   1 1001 1001  5856 Jul 16 09:57 configuration_llava.py
+-rw-rw-r--   1 1001 1001  1074 Jul 16 09:57 __init__.py
+-rw-rw-r--   1 1001 1001 11373 Jul 16 09:57 processing_llava.py
+-rw-rw-r--   1 1001 1001 22759 Jul 16 09:57 modeling_llava.py
+-rw-rw-r--   1 1001 1001  7262 Jul 16 09:57 image_processing_llava_fast.py
+drwxrwxr-x 338 1001 1001 12288 Jul 16 09:57 ..
+drwxrwxr-x   3 1001 1001  4096 Jul 16 09:57 .
+drwxrwxr-x   2 1001 1001  4096 Jul 16 09:57 __pycache__
+
+---------------
+what is the terminal command to locate an ollama model on a serve
+... r
+ To locate an Ollama model on a server using the command line, 
+you can use the `find` command in combination with the `grep` 
+command. The `find` command searches for files that match a 
+specified pattern, and the `grep` command searches for text 
+strings within files. Here is an example command that will 
+search for all files on the server that contain the string 
+"OllamaModel" in their names:
+```css
+find / -name "*OllamaModel*" | grep -l ollama_model.py
+```
+In this command, `/` represents the root directory of the 
+server, and `-name` is used to search for files with a specific  name pattern. The `*` wildcard matches any number of characters 
+between the two occurrences of `OllamaModel`, so it will match 
+files with names like "model\_OllamaModel.py" or 
+"ollama\_model.py". The `grep -l` command then searches for 
+lines containing the string "OllamaModel" and returns a list of 
+files that contain it.
+
+Note that this is just an example, and you may need to modify 
+the command to fit your specific needs depending on the 
+location and name of the file you are looking for. 
+
+---------------
+>>> how can i serve an Ollama model on a specific port 
+ To serve an Ollama model on a specific port using Python, you 
+would need to use a web framework such as Flask or Django. Here 
+is an example of serving an Ollama model using Flask:
+
+1. Install the necessary packages by running: `pip install 
+flask ollama`
+2. Create a new file `app.py` and import the necessary modules:
+```python
+from flask import Flask, request
+import ollama
+```
+3. Initialize an instance of the Ollama model and load it into 
+memory:
+```scss
+model = ollama.OllamaModel.load('path/to/model')
+```
+4. Create a new route for serving the model on a specific port:
+```python
+app = Flask(__name__)
+app.route('/generate', methods=['POST'])
+def generate():
+    text = request.form['text']
+    response = model.predict(text)
+    return str(response)
+
+if __name__ == '__main__':
+    app.run(port=5000) # specify the port number you want to 
+use
+```
+This code sets up a Flask app that listens for POST requests on 
+route '/generate'. When a request is received, it extracts the 
+text from the request body, passes it through the Ollama 
+model's predict() method, and returns the response as a string. 
+Finally, the app runs on port 5000.
+
+Note that this is just an example, and you may need to modify 
+the code to fit your specific needs. 
+---------------
+$ git clone https://github.com/ollama/ollama.git
+$ source intel/oneapi/setvars.sh
+
+# Install go
+$ wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+$ mkdir ~/go_1.23.0 && tar zxf go1.23.0.linux-amd64.tar.gz -C ~/go_1.23.0
+$ export PATH=$PATH:~/go_1.23.0/go/bin
+
+$ cd ollama
+$ go generate ./...
+$ go build .    # ollama binary will be generated.
+
+# Option to stop the before ollama service
+$ ps -A |grep ollama
+$ netstat -aon |grep 11434
+$ sudo service ollama stop
+
+# Start ollama server
+$ OLLAMA_INTEL_GPU=1 ./ollama serve   ##if no "OLLAMA_INTEL_GPU=1"， it will run on cpu.
+
+# Start ollama client to test
+# Option 1
+$ ./ollama run llama3.1
+# Option 2
+$ curl --noproxy "localhost" http://localhost:11434/api/generate -d '{
+  "model": "llama3.1",
+  "prompt":"Why is the sky blue?"
+}'
+
+---------------
+
+Skip to content
+Towards Data Science
+Publish AI, ML & data-science insights to a global community of data professionals.
+
+Sign in
+Submit an Article
+Latest
+Editor’s Picks
+Deep Dives
+Newsletter
+Write For TDS
+LinkedIn
+X
+
+Toggle Search
+
+Artificial Intelligence
+LLaVA: An open-source alternative to GPT-4V(ision)
+Running LLaVA on the Web, locally, and on Google Colab
+
+Yann-Aël Le Borgne
+Jan 23, 2024
+7 min read
+Share
+LLaVA (acronym of Large Language and Visual Assistant) is a promising open-source generative AI model that replicates some of the capabilities of OpenAI GPT-4 in conversing with images. Users can add images into LLaVA chat conversations, allowing to discuss about the content of these images, but also to use them as a way to describe ideas, contexts or situations in a visual way.
+
+The most compelling features of LLaVA are its ability to improve upon other open-source solutions while using a simpler model architecture and orders of magnitude less training data. These characteristics make LLaVA not only faster and cheaper to train, but also more suitable for inference on consumer hardware.
+
+This post gives an overview of LLaVA, and more specifically aims to
+
+show how to experiment with it from a web interface, and how it can be installed on your computer or laptop
+explain its main technical characteristics
+illustrate how to program with it, using as an example a simple chatbot application built with HuggingFace libraries (Transformers and Gradio) on Google Colab.
+Using LLaVA online
+If you have not yet tried it, the simplest way to use LLaVA is by going to the Web interface provided by its authors. The screenshot below illustrates how the interface operates, where a user asks for ideas about what meals to do given a picture of the content of their fridge. Images can be loaded using the widget on the left, and the chat interface allows to ask questions and obtain answers in the form of text.
+
+LLaVA Web interface
+LLaVA Web interface
+In this example, LLaVA correctly identifies ingredients present in the fridge, such as blueberries, strawberries, carrots, yoghourt or milk, and suggest relevant ideas such as fruit salads, smoothies or cakes.
+
+Other examples of conversations with LLaVA are given on the project website, which illustrate that LLaVA is capable of not just describing images but also making inferences and reasoning based on the elements within the image (identify a movie or a person using clues from a picture, code a website from a drawing, explain humourous situations, and so on).
+
+Running LLaVA locally
+LLaVA can also be installed on a local machine using Ollama or a Mozilla ‘llamafile‘. These tools can run on most CPU-only consumer-grade level machines, as the model only requires 8GB of RAM and 4GB of free disk space, and was even shown to successfully run on a Raspberry PI. Among the tools and interfaces developed around the Ollama project, a notable initiative is the Ollama-WebUI (illustrated below), which reproduces the look and feel of OpenAI ChatGPT user interface.
+
+Ollama Web user interface - inspired by OpenAI ChatGPT
+Ollama Web user interface – inspired by OpenAI ChatGPT
+Brief overview of LLaVA’s main features
+LLaVA was designed by researchers from the University of Wisconsin-Madison, Microsoft Research and Columbia University, and was recently showcased at NeurIPS 2023. The project’s code and technical specifications can be accessed on its Github repository, which also offers various interfaces for interacting with the assistant.
+
+As the authors summarize in their paper’s abstract:
+
+[LLava] achieves state-of-the-art across 11 benchmarks. Our final 13B checkpoint uses merely 1.2M publicly available data, and finishes full training in ~1 day on a single 8-A100 node. We hope this can make state-of-the-art LMM research more accessible. Code and model will be publicly available.
+
+The benchmark results, reported in the paper as the radar chart below, illustrate the improvements compared to other state-of-the-art models.
+
+Radar chart of LLaVA's benchmark results (image from paper)
+Radar chart of LLaVA’s benchmark results (image from paper)
+Inner workings
+LLaVA’s data processing workflow is conceptually simple. The model essentially works as a standard causal language model, taking language instructions (a user text prompt) as input, and returning a language response. The ability of the language model to handle images is allowed by a separate vision encoder model that converts images into language tokens, which are quietly added to the user text prompt (acting as a kind of soft prompt). The LLaVA process is illustrated below.
+
+LLaVA network architecture (image from paper)
+LLaVA network architecture (image from paper)
+LLaVA’s language model and vision encoder rely on two reference models called Vicuna and CLIP, respectively. Vicuna is a pretrained large language model based on LLaMA-2 (designed by Meta) that boasts competitive performances with medium sized LLM (See model cards for the 7B and 13B versions on HuggingFace). CLIP is an image encoder designed by OpenAI, pretrained to encode images and text in a similar embedding space using contrastive language-image pretraining (hence ‘CLIP’). The model used in LLaVA is the vision transformer variant CLIP-ViT-L/14 (see its model card on HuggingFace).
+
+To match the dimension of the vision encoder with those of the language model, a projection module (W in the image above) is applied. It is a simple linear projection in the original LLaVA, and a two-layer perceptron in LLaVA 1.5.
+
+Training process
+The training process of LLaVA consists of two relatively simple stages.
+
+The first stage solely aims at tuning the projection module W, and the weights of the vision encoder and LLM are kept frozen. The training is performed using a subset of around 600k image/caption pairs from the CC3M conceptual caption dataset, and is available on HuggingFace in this repository.
+
+In a second stage, the projection module weigths W are fine-tuned together with the LLM weights (while keeping the vision encoder’s weights frozen), using dataset of 158K language-image instruction-following data. The data is generated using GPT4, and feature examples of conversations, detailed descriptions and complex reasonings, and is available on HuggingFace in this repository.
+
+The whole training takes around a day using eight A100 GPUs.
+
+Programming with LLaVA: How to get started
+Code available on the Colab related notebook.
+
+The LLaVA model is integrated in the Transformers library, and can be loaded using the standard pipeline object. The 7B and 13B variants of the models are available on the LLaVA 😊 Hub space, and may be loaded in 4 and 8 bits to save GPU memory. We illustrate below how to load and run model using code that can be executed on Colab with a T4 TPU (15GB RAM GPU).
+
+Below is the code snippet to load the 7B variant of LLaVA 1.5 in 4 bits:
+
+from transformers import pipeline, BitsAndBytesConfig
+import torch
+
+quantization_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_compute_dtype=torch.float16
+)
+
+model_id = "llava-hf/llava-1.5-7b-hf"
+
+pipe = pipeline("image-to-text", model=model_id, model_kwargs={"quantization_config": quantization_config})
+Let us then load this picture
+
+
+We use the standard PIL library for loading the picture:
+
+import requests
+from PIL import Image
+
+image_url = "https://cdn.pixabay.com/photo/2018/01/29/14/13/italy-3116211_960_720.jpg"
+image = Image.open(requests.get(image_url, stream=True).raw)
+image
+Let us finally query the LLaVA model with the image, with a prompt asking to describe the picture.
+
+Note: The format for the prompt follows
+
+"USER: nnASSISTANT:"
+
+prompt = "USER: <image>nDescribe this picture​​nASSISTANT:"
+
+outputs = pipe(image, prompt=prompt, generate_kwargs={"max_new_tokens": 200})
+print(outputs[0]['generated_text'])
+Which returns the following answer:
+
+USER: Describe this picture​ASSISTANT: ​The image features a large, empty amphitheater with a stunning view of the ocean in the background. The amphitheater is surrounded by a lush green hillside, and a majestic mountain can be seen in the distance. The scene is serene and picturesque, with the sun shining brightly over the landscape.
+
+LLaVA chatbot
+Let us finally create a simple chatbot that relies on a LLaVA model. We will use the Gradio library, which provides a fast and easy way to create machine learning web interfaces.
+
+The core for the interface consists of a row with an image uploader (a Gradio Image object), and a chat interface (a Gradio ChatInterface object).
+
+import gradio as gr
+
+with gr.Blocks() as demo:
+
+    with gr.Row():
+      image = gr.Image(type='pil', interactive=True)
+
+      gr.ChatInterface(
+          update_conversation, additional_inputs=[image]
+      )
+The chat interface connects to a function _updateconversation, that takes care of keeping the conversation history, and calling the LLaVA model for a response whenever the user sends a message.
+
+def update_conversation(new_message, history, image):
+
+    if image is None:
+        return "Please upload an image first using the widget on the left"
+
+    conversation_starting_from_image = [[user, assistant] for [user, assistant] in history if not assistant.startswith('Please')]
+
+    prompt = "USER: <image>n"
+
+    for i in range(len(history)):
+        prompt+=history[i][0]+'ASSISTANT: '+history[i][1]+"USER: "
+
+    prompt = prompt+new_message+'ASSISTANT: '
+
+    outputs = pipe(image, prompt=prompt, generate_kwargs={"max_new_tokens": 200, "do_sample" : True, "temperature" : 0.7})[0]['generated_text']
+
+    return outputs[len(prompt)-6:]
+The interface is launched calling the launch method.
+
+demo.launch(debug=True)
+After a few seconds, the chatbot Web interface will appear:
+
+
+Congratulations, your LLaVA chatbot is now up and running!
+
+Useful links
+HuggingFace LLaVA model documentation
+Llava Hugging Face organization
+Loading and running LLaVA with AutoPrecessor and LLaVAForConditionalGeneration: Colab notebook
+GPT-4V(ision) system card
+Understanding Visual Instruction Tuning
+Note: Unless otherwise noted, all images are by the author.
+
+Written By
+
+Yann-Aël Le Borgne
+See all from Yann-Aël Le Borgne
+Artificial Intelligence
+Computer Vision
+Large Language Models
+Machine Learning
+Multimodal Learning
+Share This Article
+
+Share on Facebook
+Share on LinkedIn
+Share on X
+Towards Data Science is a community publication. Submit your insights to reach our global audience and earn through the TDS Author Payment Program.
+
+Write for TDS
+Related Articles
+
+Implementing Convolutional Neural Networks in TensorFlow
+Artificial Intelligence
+Step-by-step code guide to building a Convolutional Neural Network
+
+Shreya Rao
+August 20, 2024
+6 min read
+What Do Large Language Models “Understand”?
+Artificial Intelligence
+A deep dive on the meaning of understanding and how it applies to LLMs
+
+Tarik Dzekman
+August 21, 2024
+31 min read
+Photo by Krista Mangulsone on Unsplash
+How to Forecast Hierarchical Time Series
+Artificial Intelligence
+A beginner’s guide to forecast reconciliation
+
+Dr. Robert Kübler
+August 20, 2024
+13 min read
+Photo by davisuko on Unsplash
+Hands-on Time Series Anomaly Detection using Autoencoders, with Python
+Data Science
+Here’s how to use Autoencoders to detect signals with anomalies in a few lines of…
+
+Piero Paialunga
+August 21, 2024
+12 min read
+Image from Canva.
+3 AI Use Cases (That Are Not a Chatbot)
+Machine Learning
+Feature engineering, structuring unstructured data, and lead scoring
+
+Shaw Talebi
+August 21, 2024
+7 min read
+
+Back To Basics, Part Uno: Linear Regression and Cost Function
+Data Science
+An illustrated guide on essential machine learning concepts
+
+Shreya Rao
+February 3, 2023
+6 min read
+
+Must-Know in Statistics: The Bivariate Normal Projection Explained
+Data Science
+Derivation and practical examples of this powerful concept
+
+Luigi Battistoni
+August 14, 2024
+7 min read
+
+YouTube
+X
+LinkedIn
+Threads
+Bluesky
+Towards Data Science
+Your home for data science and Al. The world’s leading publication for data science, data analytics, data engineering, machine learning, and artificial intelligence professionals.
+
+© Insight Media Group, LLC 2025
+Subscribe to Our Newsletter
+Write For TDS
+About
+Advertise
+Privacy Policy
+Terms of Use
+Cookies Settings
+Recommended Articles
+Close
+  
+Midyear 2025 AI Reflection
+
+  
+3 Steps to Context Engineering a Crystal-Clear Project
+
+  
+The Future of AI Agent Communication with ACP
+
+  
+There and Back Again: An AI Career Journey
+
+Some areas of this page may shift around if you resize the browser window. Be sure to check heading and document order.{"models":[{"name":"LLaVA:latest","model":"LLaVA:latest","modified_at":"2025-07-19T13:10:57.287180616Z","size":4733363377,"digest":"8dd30f6b0cb19f555f2c7a7ebda861449ea2cc76bf1f44e262931f45fc81d081","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama","clip"],"parameter_size":"7B","quantization_level":"Q4_0 "}},{"name":"codellama:latest","model":"codellama:latest","modified_at":"2025-07-18T23:55:09.93424209Z","size":3825910662,"digest":"8fdf8f752f6e80de33e82f381aba784c025982752cd1ae9377add66449d2225f","details":{"parent_model":"","format":"gguf","family":"llama","families":null,"parameter_size":"7B","quantization_level":"Q4_0 "}},{"name":"mistral:latest","model":"mistral:latest","modified_at":"2025-07-18T23:46:47.547543757Z","size":4372824384,"digest":"6577803aa9a036369e481d648a2baebb381ebc6e897f2bb9a766a2aa7bfbc1cf","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"7.2B","quantization_level":"Q4_K_M"}},{"name":"deepseek-r1:7b","model":"deepseek-r1:7b","modified_at":"2025-07-16T10:18:48.146695498Z","size":4683075440,"digest":"755ced02ce7befdb13b7ca74e1e4d08cddba4986afdb63a480f2c93d3140383f","details":{"parent_model":"","format":"gguf","family":"qwen2","families":["qwen2"],"parameter_size":"7.6B","quantization_level":"Q4_K_M"}},{"name":"llama3:instruct","model":"llama3:instruct","modified_at":"2025-07-16T09:02:08.646410022Z","size":4661224676,"digest":"365c0bd3c000a25d28ddbf732fe1c6add414de7275464c4e4d1c3b5fcb5d8ad1","details":{"parent_model":"","format":"gguf","family":"llama","families":["llama"],"parameter_size":"8.0B","quantization_level":"Q4_0 "}}]}
+

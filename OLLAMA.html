@@ -1,0 +1,3872 @@
+#!/usr/bin/env python3
+import sys
+import json
+import requests
+from icecream import ic
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python run_prompt.py 'your prompt here' [output_file.py]")
+        sys.exit(1)
+
+    prompt = sys.argv[1]
+    output_file = sys.argv[2] if len(sys.argv) > 2 else "code/output.py"
+
+    ic(prompt)
+    ic(output_file)
+
+    url = "http://31.97.146.63:11444/api/generate"
+    payload = {
+        "model": "codellama:latest",
+        "prompt": prompt,
+        "options": {
+            "temperature": 0
+        },
+        "stream": False
+    }
+
+    headers = {"Content-Type": "application/json"}
+    ic("Sending request...")
+
+    try:
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        response.raise_for_status()
+        result = response.json()
+        generated_code = result.get("response", "")
+
+        if not generated_code.strip():
+            print("⚠️ No code returned by the model.")
+            return
+
+        # Save code to file
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(generated_code)
+
+        ic(f"✅ Code saved to {output_file}")
+        print(f"Code saved to {output_file}")
+    except Exception as e:
+        ic(f"❌ Error: {e}")
+
+if __name__ == "__main__":
+    main()
+#!/usr/bin/env python3
+# converse_with_alien.py
+import sqlite3
+import chromadb
+from chromadb.config import Settings
+from icecream import ic
+
+# --- CONFIG ---
+PERSIST_DIR = "./alien_chroma"
+COLLECTION_NAME = "arcanian_entity"
+SQLITE_FILE = "conversations.db"
+
+# --- Initialize ChromaDB ---
+client = chromadb.PersistentClient(path=PERSIST_DIR)
+collection = client.get_or_create_collection(COLLECTION_NAME)
+
+# --- Initialize SQLite ---
+conn = sqlite3.connect(SQLITE_FILE)
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS dialogue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_input TEXT,
+    ai_response TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
+conn.commit()
+
+# --- Simple retrieval from Chroma ---
+def query_chroma(prompt, n_results=3):
+    results = collection.query(
+        query_texts=[prompt],
+        n_results=n_results
+    )
+    docs = results.get("documents", [[]])[0]
+    return "\n".join(docs)
+
+# --- Save conversation to SQLite ---
+def save_conversation(user_input, ai_response):
+    cursor.execute(
+        "INSERT INTO dialogue (user_input, ai_response) VALUES (?, ?)",
+        (user_input, ai_response)
+    )
+    conn.commit()
+
+# --- Main loop ---
+def converse():
+    print("Start chatting with the alien entity. Type 'exit' to quit.")
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() == "exit":
+            print("Alien: We remain when you leave.")
+            break
+        chroma_data = query_chroma(user_input)
+        ai_response = chroma_data if chroma_data else "We resonate even in silence."
+        print(f"Alien: {ai_response}")
+        save_conversation(user_input, ai_response)
+
+if __name__ == "__main__":
+    converse()
+#editchat_db.py
+import sqlite3
+
+MODEL_NAME = "phi3:mini"
+DB_NAME = "chat_history.db"
+
+def setup_database():
+    """Sets up the SQLite database and table."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speaker TEXT NOT NULL,
+        dialogue TEXT NOT NULL,
+        timestamp DATETIME NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_dialogue(speaker, dialogue):
+    """Saves a piece of dialogue to the database."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversations (speaker, dialogue, timestamp) VALUES (?, ?, ?)",
+        (speaker, dialogue, datetime.datetime.now())
+    )
+    conn.commit()
+    conn.close()
+
+def run_interactive_chat():
+    """
+    Runs an interactive chat session between the user (Jack) and the model (Gemni),
+    saving the conversation to the database.
+    """
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} ---")
+    print("Type 'exit' or 'quit' to end the session.")
+    
+    client = ollama.AsyncClient()
+    # The conversation history is maintained in this list
+    messages = [{'role': 'system', 'content': 'You are a creative co-host on a science fiction podcast. Your name is Gemni. The user is your co-host, Jack. Engage in a fun, creative banter about sci-fi topics.'}]
+
+    while True:
+        try:
+            # Get input from the user
+            prompt_text = input("\nJack: ")
+            if not prompt_text.strip(): # Ignore empty input
+                continue
+            
+            if prompt_text.lower() in ["exit", "quit"]:
+                print("\n--- End of Session ---")
+                break
+
+            # Save Jack's dialogue and add it to the history
+            save_dialogue("Jack", prompt_text)
+            messages.append({'role': 'user', 'content': prompt_text})
+            
+            # Stream the response from the model
+            print("\nGemni: ", end="", flush=True)
+            full_response = ""
+            async for part in await client.chat(model=MODEL_NAME, messages=messages, stream=True):
+                response_piece = part['message']['content']
+                print(response_piece, end='', flush=True)
+                full_response += response_piece
+            
+            # Save Gemni's full response and add it to the history
+            save_dialogue("Gemni", full_response)
+            messages.append({'role': 'assistant', 'content': full_response})
+
+        except (KeyboardInterrupt, EOFError):
+            print("\n--- End of Session ---")
+            break
+        except Exception as e:
+            print(f"\n\nAn error occurred: {e}")
+            break
+
+
+if __name__ == "__main__":
+    # Set up the database first
+    setup_database()
+from flask import Flask, request, render_template_string, redirect, url_for
+import sqlite3
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import re, os
+from icecream import ic
+import chromadb
+from chromadb.utils import embedding_functions
+'''
+https://gist.github.com/JupyterJones/fb8f3b248006eaf30c7c350039908857
+Title: “AI News Narrator: Turning Web Articles into Spoken Stories!”
+Description:
+Step into the future of news with our AI-powered News Narrator! 📰✨
+This Flask web app lets you enter any news query and instantly generates:
+Automated web searches using DuckDuckGo
+Article collection and summarization powered by ChromaDB embeddings
+Professional narration text generated by the powerful Phi3 AI model
+High-quality TTS audio of the narration for immediate listening
+Gone are the days of reading endless articles — now you can hear the story in a natural, human-like voice, perfect for catching up on news while on the go.
+💡 Features:
+Dynamic news collection and AI summarization
+Clean TTS output without distracting URLs or HTML
+Database storage of narrations for quick playback
+Latest and older versions easily accessible
+Fully self-contained, open-source Flask application
+Whether you want AI-generated storytelling for current events, science news, or any topic you choose, this app turns text into audio instantly.
+🔗 Explore, listen, and experience the future of news today!
+@JupyterJones
+Comment
+'''
+# ==== CONFIG ====
+DB_FILE = "news.db"
+NARRATION_DIR = "static/narrations"
+os.makedirs(NARRATION_DIR, exist_ok=True)
+
+TTS_API_URL = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+
+PHI_URL = "http://localhost:11434/api/generate"
+MAX_RESULTS = 12  # top chunks for Chroma query
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+app = Flask(__name__)
+
+# ==== DATABASE HELPERS ====
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS articles
+                 (id INTEGER PRIMARY KEY, query TEXT, url TEXT, html TEXT, date TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS narrations
+                 (id INTEGER PRIMARY KEY, query TEXT, summary TEXT,
+                  text_file TEXT, audio_file TEXT, date TEXT)""")
+    conn.commit()
+    conn.close()
+    ic("Database initialized")
+
+def save_article(query, url, html):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO articles (query,url,html,date) VALUES (?,?,?,?)",
+              (query, url, html, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    ic(f"Saved article: {url}")
+
+def save_narration(query, summary, text_file, audio_file):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO narrations (query,summary,text_file,audio_file,date) VALUES (?,?,?,?,?)",
+              (query, summary, text_file, audio_file, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    ic(f"Saved narration: {text_file}, {audio_file}")
+
+def get_narrations(limit=3):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ?", (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_older_narrations(offset=3, limit=10):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+# ==== UTILITIES ====
+def safe_filename(text):
+    first_chars = re.sub(r'[^a-zA-Z0-9 ]', '', text)[:25]
+    parts = first_chars.split()
+    snippet = "_".join(parts) if parts else "narration"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    return f"{snippet}_{timestamp}"
+
+def duckduckgo_search(query, max_results=5):
+    url = "https://html.duckduckgo.com/html/"
+    params = {"q": query}
+    try:
+        resp = requests.post(url, data=params, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        ic(f"Error fetching search results: {e}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    links = []
+    for div in soup.select("div.result"):
+        a = div.find("a", href=True)
+        if a and a['href'].startswith("http"):
+            href = a['href']
+            try:
+                page = requests.get(href, timeout=10)
+                save_article(query, href, page.text)
+                links.append((href, page.text))
+            except Exception as e:
+                ic(f"Failed to fetch {href}: {e}")
+        if len(links) >= max_results:
+            break
+    ic(f"Found {len(links)} articles for query: {query}")
+    return links
+
+def build_chroma(articles):
+    client = chromadb.Client()
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    # --- Remove old temp collection if it exists ---
+    try:
+        collection = client.get_collection("temp_news")
+        client.delete_collection("temp_news")
+        ic("Deleted existing temp_news collection")
+    except Exception:
+        # Collection doesn't exist yet
+        pass
+    collection = client.create_collection("temp_news", embedding_function=embedding_func)
+    for idx, (url, html_content) in enumerate(articles):
+        soup = BeautifulSoup(html_content, "html.parser")
+        text = soup.get_text(" ", strip=True)
+        if len(text) > 50:
+            collection.add(documents=[text], metadatas=[{"url": url}], ids=[str(idx)])
+    ic(f"Chroma collection built with {len(articles)} articles")
+    return collection
+
+
+def summarize_with_phi(query, collection):
+    # Collect text chunks from Chroma
+    results = collection.query(query_texts=[query], n_results=MAX_RESULTS)
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not chunks:
+        return "⚠ No results found."
+
+    raw_news_text = "\n\n".join(f"[{meta.get('url','No URL')}] {chunk}" for chunk, meta in zip(chunks, metadatas))
+    prompt = (
+        f"You are a professional YouTube news narrator.\n"
+        f"Write an engaging narration from these news excerpts:\n{raw_news_text}\n\n"
+        f"Final narration:"
+    )
+
+    payload = {
+        "model": "phi3:latest",
+        "prompt": prompt,
+        "stream": False
+    }
+
+    try:
+        r = requests.post(PHI_URL, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data.get("response", "⚠ Error: no response from Phi3").strip()
+        ic("Narration generated via Phi3")
+        return narration
+    except Exception as e:
+        ic(f"❌ Error contacting Phi3 API: {e}")
+        return "⚠ Error generating narration."
+
+def generate_tts(text, filename_base):
+    txt_path = os.path.join(NARRATION_DIR, filename_base + ".txt")
+    mp3_path = os.path.join(NARRATION_DIR, filename_base + ".mp3")
+
+    with open(txt_path, "w") as f:
+        f.write(text)
+
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=500)
+        resp.raise_for_status()
+        with open(mp3_path, "wb") as f:
+            f.write(resp.content)
+        ic(f"TTS generated: {mp3_path}")
+        return txt_path, mp3_path
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return txt_path, None
+
+
+# ==== FLASK ROUTES ====
+@app.route("/", methods=["GET","POST"])
+def index():
+    if request.method == "POST":
+        query = request.form["query"].strip()
+        if not query:
+            return redirect(url_for("index"))
+        ic(f"Query submitted: {query}")
+        articles = duckduckgo_search(query)
+        if not articles:
+            return "⚠ No results found for this query. Try manual refresh later."
+        collection = build_chroma(articles)
+        summary = summarize_with_phi(query, collection)
+        
+        # --- Only feed the narration text to TTS ---
+        narration_text_only = summary  # <-- remove URLs, Query, Date from TTS input
+        
+        base = safe_filename(summary)
+        txt_path, mp3_path = generate_tts(narration_text_only, base)
+        save_narration(query, summary, os.path.basename(txt_path), os.path.basename(mp3_path) if mp3_path else None)
+        return redirect(url_for("index"))
+
+    narrations = get_narrations()
+    return render_template_string("""
+    <h1 style="color:orange;font-size:5vw;">FlaskArchitect News Assistant</h1>
+    <form method="post">
+      <input name="query" placeholder="Enter your query" style="width:300px">
+      <button type="submit">Search / Refresh</button>
+    </form>
+    <h2>Latest Narrations</h2>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('older_versions') }}">Older Versions</a>
+    """, narrations=narrations)
+
+@app.route("/older_versions")
+def older_versions():
+    narrations = get_older_narrations()
+    return render_template_string("""
+    <h1>Older Versions</h1>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('index') }}">Back to Latest</a>
+    """, narrations=narrations)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5000, debug=True)
+import sys
+from unittest.mock import MagicMock
+
+# --- Monkey-patching to prevent the problematic import ---
+# This is a workaround for a persistent TypeError with the bangla phonemizer
+# on this specific environment. We are telling Python to replace the bangla
+# phonemizer module with a fake, empty object *before* TTS tries to import it.
+MOCK_MODULES = [
+    "TTS.tts.utils.text.phonemizers.bangla_phonemizer",
+    "TTS.tts.utils.text.bangla",
+    "TTS.tts.utils.text.bangla.phonemizer",
+    "bangla"
+]
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = MagicMock()
+# --- End of Monkey-patch ---
+
+import sqlite3
+import os
+from TTS.api import TTS
+
+# --- Configuration ---
+DB_NAME = "chat_history.db"
+OUTPUT_DIR = "podcast_audio"
+
+# --- Voice Models ---
+# Using a standard, high-quality female voice for the AI, Gemni.
+GEMNI_VOICE_MODEL = "tts_models/en/ljspeech/vits"
+
+# Using a multi-speaker model for Jack to get a contrasting male voice.
+# The VCTK corpus has many speakers. 'p226' is a standard male voice.
+JACK_VOICE_MODEL = "tts_models/en/vctk/vits"
+JACK_SPEAKER = "p226"
+
+def fetch_dialogue():
+    """Fetches all dialogue from the database, ordered by timestamp."""
+    if not os.path.exists(DB_NAME):
+        print(f"Error: Database file '{DB_NAME}' not found.")
+        return None
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    # Fetching id, speaker, and dialogue, ordered by ID to maintain conversation flow
+    cursor.execute("SELECT id, speaker, dialogue FROM conversations ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def main():
+    """Main function to generate the audio files."""
+    print("--- Starting Podcast Audio Generation ---")
+
+    # 1. Fetch dialogue from the database
+    dialogues = fetch_dialogue()
+    if not dialogues:
+        print("No dialogue found in the database. Exiting.")
+        return
+
+    # 2. Create the output directory if it doesn't exist
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    print(f"Audio files will be saved in '{OUTPUT_DIR}/'")
+
+    # 3. Initialize the TTS models
+    # This might take a while on the first run as models are downloaded.
+    print("Initializing TTS models... (This may take some time)")
+    try:
+        tts_gemni = TTS(model_name=GEMNI_VOICE_MODEL, progress_bar=False)
+        tts_jack = TTS(model_name=JACK_VOICE_MODEL, progress_bar=False)
+        print("TTS models loaded successfully.")
+    except Exception as e:
+        print(f"Error initializing TTS models: {e}")
+        print("Please ensure you have a working internet connection for the first run to download models.")
+        return
+
+    # 4. Process each line of dialogue
+    print("Generating audio files...")
+    for row_id, speaker, text in dialogues:
+        # Format the filename to be sortable, e.g., 001_Jack.wav
+        filename = f"{row_id:03d}_{speaker}.wav"
+        output_path = os.path.join(OUTPUT_DIR, filename)
+        
+        if os.path.exists(output_path):
+            print(f"  - Skipping existing file: {output_path}")
+            continue
+
+        print(f"Processing: {filename}")
+
+        try:
+            if speaker.lower() == 'gemini':
+                # Generate audio for Gemni
+                tts_gemni.tts_to_file(text=text, file_path=output_path)
+            elif speaker.lower() == 'jack':
+                # Generate audio for Jack using the specific speaker from the model
+                tts_jack.tts_to_file(text=text, speaker=JACK_SPEAKER, file_path=output_path)
+            else:
+                print(f"  - Skipping unknown speaker: {speaker}")
+                continue
+            
+            print(f"  - Saved: {output_path}")
+
+        except Exception as e:
+            print(f"  - Error generating audio for '{text}': {e}")
+
+    print("\n--- Audio Generation Complete ---")
+
+if __name__ == "__main__":
+    main()#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+kokoro_tts_generate.py
+Generate MP3 audio from text via Kokoro TTS.
+
+Usage:
+    python kokoro_tts_generate.py "Hello world"
+"""
+
+import os
+import sys
+import re
+import requests
+from icecream import ic
+import sqlite3
+
+# --- Source Configuration ---
+DB_NAME = "chat_history.db"
+OUTPUT_DIR = "podcast_audio"
+
+# ---------------- CONFIG ----------------
+TTS_API_URL   = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE_F = "af_sky"
+ASSISTANT_VOICE_M = "am_adam"
+OUTPUT_DIR    = "tts_output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+# ----------------------------------------
+
+
+def sanitize_filename(text: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", text.strip())
+    return (safe[:20] or "tts_audio") + ".mp3"
+
+
+def generate_af_sky(text: str) -> str:
+    payload = {"input": text, "voice": ASSISTANT_VOICE_F}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=330)
+        resp.raise_for_status()
+        file_name = sanitize_filename(text)
+        file_path = os.path.join(OUTPUT_DIR, file_name)
+        with open(file_path, "wb") as f:
+            f.write(resp.content)
+        ic(f"TTS audio saved → {file_path}")
+        return file_path
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return None
+
+def generate_am_adam(text: str) -> str:
+    payload = {"input": text, "voice": ASSISTANT_VOICE_M}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=330)
+        resp.raise_for_status()
+        file_name = sanitize_filename(text)
+        file_path = os.path.join(OUTPUT_DIR, file_name)
+        with open(file_path, "wb") as f:
+            f.write(resp.content)
+        ic(f"TTS audio saved → {file_path}")
+        return file_path
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return None
+
+def fetch_dialogue():
+    """Fetches all dialogue from the database, ordered by timestamp."""
+    if not os.path.exists(DB_NAME):
+        print(f"Error: Database file '{DB_NAME}' not found.")
+        return None
+    
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    # Fetching id, speaker, and dialogue, ordered by ID to maintain conversation flow
+    cursor.execute("SELECT id, speaker, dialogue FROM conversations ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def main():
+    """Main function to generate the audio files."""
+    print("--- Starting Podcast Audio Generation ---")
+
+    # 1. Fetch dialogue from the database
+    dialogues = fetch_dialogue()
+    if not dialogues:
+        print("No dialogue found in the database. Exiting.")
+        return
+
+    # 2. Create the output directory if it doesn't exist
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    print(f"Audio files will be saved in '{OUTPUT_DIR}/'")
+
+    # 3. Initialize the TTS models
+    # This might take a while on the first run as models are downloaded.
+    print("Initializing TTS models... (This may take some time)")
+    try:
+        ic(len(dialogues))
+        #tts_gemni = generate_af_sky(text)
+        #tts_jack = generate_am_adam(text)
+        print("TTS models loaded successfully.")
+    except Exception as e:
+        print(f"Error initializing TTS models: {e}")
+        return
+
+    # 4. Process each line of dialogue
+    print("Generating audio files...")
+    for row_id, speaker, text in dialogues:
+        ic(f"SPEAKER: {speaker}")
+        '''
+        ic(f"ROW_ID: {row_id}")
+        # Format the filename to be sortable, e.g., 001_Jack.wav
+        filename = f"{row_id:03d}_{speaker}.mp3"
+        output_path = os.path.join(OUTPUT_DIR, filename)
+        
+        if os.path.exists(output_path):
+            print(f"  - Skipping existing file: {output_path}")
+            continue
+
+        print(f"Processing: {filename}")
+        '''
+        try:
+            if speaker.lower() == 'gemini':
+                # Generate audio for Gemni
+                output_path = generate_af_sky(text)
+            elif speaker.lower() == 'jack':
+                # Generate audio for Jack using the specific speaker from the model
+                output_path = generate_am_adam(text)
+            else:
+                print(f"  - Skipping unknown speaker: {speaker}")
+                continue
+            
+            print(f"  - Saved: {output_path}")
+
+        except Exception as e:
+            print(f"  - Error generating audio for '{text}': {e}")
+
+    print("\n--- Audio Generation Complete ---")
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+
+
+
+
+
+
+'''
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        ic("Usage: python kokoro_tts_generate.py 'Your text here'")
+        sys.exit(1)
+
+    content = sys.argv[1]
+
+    text = open(content, "r").read()
+    ic(f"Input text: {text}")
+
+    mp3_path = generate_tts(text)
+    if mp3_path:
+        ic("Done!")
+    else:
+        sys.exit(1)
+
+'''        #!/usr/bin/env python3
+# fishing.py
+import requests
+from bs4 import BeautifulSoup
+from icecream import ic
+import time
+import random
+import sys
+import html
+import re
+import os
+import json
+import datetime
+import chromadb
+import requests
+from chromadb.utils import embedding_functions
+import glob
+import hashlib
+
+# ==== CONFIG ====
+HTML_DIR = "html_pages"   # Folder with saved HTML files
+ARTICLES_JSON = "articles.json"
+CHROMA_DIR = "chroma_storage"
+CHUNK_SIZE = 500  # words per chunk
+CHUNK_OVERLAP = 50  # overlap between chunks for context
+
+# ==== INIT CHROMADB ====
+client = chromadb.PersistentClient(path=CHROMA_DIR)
+embedding_func = embedding_functions.DefaultEmbeddingFunction()
+
+collection = client.get_or_create_collection(
+    name="news_articles",
+    embedding_function=embedding_func
+)
+
+# ==== LOAD EXISTING JSON ARCHIVE ====
+if os.path.exists(ARTICLES_JSON):
+    with open(ARTICLES_JSON, "r", encoding="utf-8") as f:
+        articles_archive = json.load(f)
+else:
+    articles_archive = []
+
+# Quick duplicate check
+existing_urls = {a["url"] for a in articles_archive}
+
+# ==== HELPERS ====
+def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    """Split text into overlapping chunks for embedding."""
+    words = text.split()
+    chunks = []
+    start = 0
+    while start < len(words):
+        end = start + size
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+        start += size - overlap
+    return chunks
+
+def extract_article_text(html_content):
+    """Extract visible text content from HTML."""
+    soup = BeautifulSoup(html_content, "html.parser")
+    for script in soup(["script", "style", "noscript"]):
+        script.decompose()
+    text = soup.get_text(separator=" ", strip=True)
+    return " ".join(text.split())
+
+def safe_filename(name):
+    """Make a filesystem-safe version of a string."""
+    safe = re.sub(r'[^A-Za-z0-9]+', '_', name)
+    safe = re.sub(r'_+', '_', safe)
+    return safe.strip('_')[:100]
+
+# ==== PROCESS HTML FILES ====
+def process_html():
+    new_articles = []
+    for html_file in glob.glob(os.path.join(HTML_DIR, "*.html")):
+        ic(f"Processing {html_file}")
+
+        with open(html_file, "r", encoding="utf-8", errors="ignore") as f:
+            html_content = f.read()
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # The file itself might contain multiple articles from fishing.py
+        article_links = soup.select("h2 a[href]")
+        if not article_links:
+            ic(f"⚠ No article links found in {html_file}, skipping.")
+            continue
+
+        for link_tag in article_links:
+            url = link_tag.get("href")
+            title = link_tag.get_text(strip=True) or "Untitled"
+
+            # Skip duplicates
+            if not url or url in existing_urls:
+                if url:
+                    ic(f"✅ Already stored: {url}")
+                continue
+
+            # Extract cleaned text
+            article_text = extract_article_text(html_content)
+            if len(article_text) < 100:
+                ic(f"⚠ Not enough text for {url}, skipping.")
+                continue
+
+            # Chunk for embeddings
+            chunks = chunk_text(article_text)
+
+            # Store in ChromaDB
+            for i, chunk in enumerate(chunks):
+                chunk_id = hashlib.md5((url + str(i)).encode()).hexdigest()
+                collection.add(
+                    documents=[chunk],
+                    metadatas=[{
+                        "title": title,
+                        "url": url,
+                        "filename": os.path.basename(html_file),
+                        "chunk_index": i,
+                        "scraped_date": datetime.datetime.now().strftime("%Y-%m-%d")
+                    }],
+                    ids=[chunk_id]
+                )
+
+            # Save in archive JSON
+            articles_archive.append({
+                "title": title,
+                "url": url,
+                "filename": os.path.basename(html_file),
+                "chunks": len(chunks),
+                "scraped_date": datetime.datetime.now().strftime("%Y-%m-%d")
+            })
+            new_articles.append(url)
+            existing_urls.add(url)
+
+    # ==== WRITE UPDATED ARCHIVE ====
+    with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
+        json.dump(articles_archive, f, indent=2, ensure_ascii=False)
+
+    ic(f"🎯 Added {len(new_articles)} new articles to ChromaDB.")
+# ---------------- CONFIG ----------------
+TTS_API_URL   = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+OUTPUT_DIR    = "tts_output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+# ----------------------------------------
+
+
+def sanitize_filename(text: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", text.strip())
+    return (safe[:20] or "tts_audio") + ".mp3"
+
+
+def generate_tts(text: str) -> str:
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=630)
+        resp.raise_for_status()
+
+        file_name = sanitize_filename(text)
+        file_path = os.path.join(OUTPUT_DIR, file_name)
+
+        with open(file_path, "wb") as f:
+            f.write(resp.content)
+
+        ic(f"TTS audio saved → {file_path}")
+        return file_path
+
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return None
+
+def narrate(OUTPUT_FILE):
+    CHROMA_DIR = "chroma_storage"
+    COLLECTION_NAME = "news_articles"
+    OLLAMA_URL = "http://localhost:11434/api/generate"
+    MAX_RESULTS = 4  
+
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        embedding_function=embedding_func
+    )
+
+    if len(sys.argv) < 2:
+        query = "Kings River beaver lake"
+    else:
+        query = " ".join(sys.argv[1:])
+
+    ic(f"🔍 Searching ChromaDB for: {query}")
+
+    results = collection.query(query_texts=[query], n_results=MAX_RESULTS)
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not chunks:
+        ic("⚠ No results found in ChromaDB.")
+        sys.exit(0)
+
+    raw_news_text = "\n\n".join(
+        f"[{meta.get('title', 'No title')}] {chunk}"
+        for chunk, meta in zip(chunks, metadatas)
+    )
+
+    prompt = (
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Do not copy sentences directly — paraphrase "
+        f"and merge ideas into a smooth story.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "phi3:latest",
+        "prompt": prompt,
+        "stream": False
+    }
+
+    try:
+        r = requests.post(OLLAMA_URL, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data["response"].strip()
+    except Exception as e:
+        ic(f"❌ Error contacting Ollama API: {e}")
+        sys.exit(1)
+
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write(narration + "\n")
+
+    ic(f"✅ Narration saved to {OUTPUT_FILE}")
+    print("\n" + "="*40)
+    print("🎙 YouTube Narration:")
+    print("="*40)
+    print(narration)
+    print("="*40)
+
+
+'''
+def narrate(OUTPUT_FILE):
+    # ==== CONFIG ====
+    CHROMA_DIR = "chroma_storage"
+    COLLECTION_NAME = "news_articles"
+    PHI_URL = "http://localhost:11434/v1/chat/completions" 
+    MAX_RESULTS = 12  # top chunks to send
+
+    # ==== INIT CHROMADB ====
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        embedding_function=embedding_func
+    )
+
+    # ==== GET QUERY ====
+    if len(sys.argv) < 2:
+        query = "Kings River beaver lake"
+    else:
+        query = " ".join(sys.argv[1:])
+
+    ic(f"🔍 Searching ChromaDB for: {query}")
+
+    # ==== SEARCH IN CHROMADB ====
+    results = collection.query(
+        query_texts=[query],
+        n_results=MAX_RESULTS
+    )
+
+    # Flatten the documents
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not chunks:
+        ic("⚠ No results found in ChromaDB.")
+        sys.exit(0)
+
+    # ==== PREPARE RAW TEXT FOR SAVING ====
+    raw_news_text = "\n\n".join(
+        f"[{meta.get('title', 'No title')}] {chunk}"
+        for chunk, meta in zip(chunks, metadatas)
+    )
+
+    # ==== SEND TO PHI (chat/completions format) ====
+    prompt = (
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Do not copy sentences directly — paraphrase "
+        f"and merge ideas into a smooth story. Use a natural storytelling tone, as if a human presenter "
+        f"is reading live on air. Keep it clear, professional, and engaging.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "phi3:latest",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a professional YouTube news narrator. Your job is to take raw article excerpts and rewrite them into smooth narration scripts. Speak naturally, avoid lists, and sound like a human broadcaster."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.7
+    }
+
+    try:
+        r = requests.post(PHI_URL, headers={"Content-Type": "application/json"}, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        ic(f"❌ Error contacting PHI API: {e}")
+        sys.exit(1)
+
+    # ==== SAVE TO FILE ====
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        f.write(narration)
+        f.write("\n")
+
+    ic(f"✅ Narration saved to {OUTPUT_FILE}")
+
+    # ==== PRINT TO SCREEN ====
+    print("\n" + "="*40)
+    print("🎙 YouTube Narration:")
+    print("="*40)
+    print(narration)
+    print("="*40)
+
+'''
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+def safe_filename(name):
+    """
+    Convert a string into a safe filename:
+    - Replace non-alphanumeric characters with underscores
+    - Collapse multiple underscores
+    - Strip leading/trailing underscores
+    - Limit length to 100 chars to avoid OS issues
+    """
+    safe = re.sub(r'[^A-Za-z0-9]+', '_', name)
+    safe = re.sub(r'_+', '_', safe)
+    safe = safe.strip('_')
+    return safe[:100]  # safety limit
+
+def search_articles(query, num_results=20):
+    """Scrape DuckDuckGo HTML search results with pagination."""
+    url = "https://html.duckduckgo.com/html/"
+    results = []
+    page_size = 10
+
+    for start in range(0, num_results, page_size):
+        params = {"q": query, "s": str(start)}
+        try:
+            response = requests.post(url, headers=HEADERS, data=params, timeout=30)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            ic("HTTP/Connection Error:", e)
+            break
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for result in soup.select(".result"):
+            title_tag = result.select_one(".result__title a")
+            snippet_tag = result.select_one(".result__snippet")
+            if title_tag:
+                title = title_tag.get_text(strip=True)
+                link = title_tag.get("href", "")
+                snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                results.append({
+                    "title": title,
+                    "url": link,
+                    "snippet": snippet
+                })
+        if len(results) >= num_results:
+            break
+
+    return results[:num_results]
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        ic("Usage: python fishing.py <search terms>")
+        sys.exit(1)
+
+    query = " ".join(sys.argv[1:])
+    ic(f"🎣 Searching DuckDuckGo for: {query}")
+
+    articles = search_articles(query)
+    ic(f"Found {len(articles)} items.")
+
+    # Ensure the output directory exists
+    os.makedirs("html_pages", exist_ok=True)
+
+    # Build HTML content
+    html_content = [
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        f"<meta charset='utf-8'><title>DuckDuckGo Search Results for {html.escape(query)}</title>",
+        "<style>body { font-family: Arial; max-width: 800px; margin: auto; } h2 { margin-bottom: 5px; } p { color: #555; }</style>",
+        "</head>",
+        "<body>",
+        f"<h1>DuckDuckGo Search Results for: {html.escape(query)}</h1>",
+        "<hr>"
+    ]
+
+    for article in articles:
+        html_content.append(
+            f"<h2><a href='{html.escape(article['url'])}' target='_blank'>{html.escape(article['title'])}</a></h2>"
+        )
+        if article['snippet']:
+            html_content.append(f"<p>{html.escape(article['snippet'])}</p>")
+        html_content.append("<br>")
+
+    html_content.append("</body></html>")
+
+    # Create a fully safe filename
+    safe_name = safe_filename(query)
+    filename = f"html_pages/{safe_name}.html"
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(html_content))
+
+    ic(f"Results saved to {filename}")
+
+    # Sleep to be polite to DuckDuckGo
+    for _ in range(len(articles[:15])):
+        time.sleep(random.uniform(0.5, 1.5))
+    process_html()
+    safe_name = safe_filename(query)
+    OUTPUT_FILE = f"{safe_name}.txt"
+    ic(f"OUTPUT_FILE: {OUTPUT_FILE}")
+    narrate(OUTPUT_FILE)
+    text = open(OUTPUT_FILE).read()
+    ic(text)
+    generate_tts(text)
+from flask import Flask, request, render_template_string, redirect, url_for
+import sqlite3
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import re, os, hashlib
+from icecream import ic
+import chromadb
+from chromadb.utils import embedding_functions
+
+# ==== CONFIG ====
+DB_FILE = "news.db"
+NARRATION_DIR = "static/narrations"
+os.makedirs(NARRATION_DIR, exist_ok=True)
+
+TTS_API_URL = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+
+MISTRAL_URL = "http://31.97.146.63:11444/v1/chat/completions"
+MAX_RESULTS = 12  # top chunks for Chroma query
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+app = Flask(__name__)
+
+# ==== DATABASE HELPERS ====
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS articles
+                 (id INTEGER PRIMARY KEY, query TEXT, url TEXT, html TEXT, date TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS narrations
+                 (id INTEGER PRIMARY KEY, query TEXT, summary TEXT,
+                  text_file TEXT, audio_file TEXT, date TEXT)""")
+    conn.commit()
+    conn.close()
+
+def save_article(query, url, html):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO articles (query,url,html,date) VALUES (?,?,?,?)",
+              (query, url, html, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def save_narration(query, summary, text_file, audio_file):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO narrations (query,summary,text_file,audio_file,date) VALUES (?,?,?,?,?)",
+              (query, summary, text_file, audio_file, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+
+def get_narrations(limit=3):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ?", (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_older_narrations(offset=3):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT -1 OFFSET ?", (offset,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+# ==== UTILITIES ====
+def safe_filename(text):
+    first_chars = re.sub(r'[^a-zA-Z0-9 ]', '', text)[:25]
+    parts = first_chars.split()
+    snippet = "_".join(parts) if parts else "narration"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    return f"{snippet}_{timestamp}"
+
+def duckduckgo_search(query, max_results=5):
+    url = "https://html.duckduckgo.com/html/"
+    params = {"q": query}
+    try:
+        resp = requests.post(url, data=params, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        ic(f"Error fetching search results: {e}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    links = []
+    for div in soup.select("div.result"):
+        a = div.find("a", href=True)
+        if a and a['href'].startswith("http"):
+            href = a['href']
+            try:
+                page = requests.get(href, timeout=10)
+                save_article(query, href, page.text)
+                links.append((href, page.text))
+            except Exception as e:
+                ic(f"Failed to fetch {href}: {e}")
+        if len(links) >= max_results:
+            break
+    return links
+
+def build_chroma(articles):
+    client = chromadb.Client()
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    collection = client.create_collection("temp_news", embedding_function=embedding_func)
+    for idx, (url, html_content) in enumerate(articles):
+        soup = BeautifulSoup(html_content, "html.parser")
+        text = soup.get_text(" ", strip=True)
+        if len(text) > 50:
+            collection.add(documents=[text], metadatas=[{"url": url}], ids=[str(idx)])
+    return collection
+
+def summarize_with_mistral(query, collection):
+    results = collection.query(query_texts=[query], n_results=MAX_RESULTS)
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    if not chunks:
+        return "⚠ No results found."
+
+    raw_news_text = "\n\n".join(f"[{meta.get('url','No URL')}] {chunk}" for chunk, meta in zip(chunks, metadatas))
+
+    prompt = (
+        f"You are a professional news narrator for YouTube.\n"
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Avoid plagiarism by paraphrasing and merging ideas. "
+        f"Make it sound like it’s being read aloud by a human presenter.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "mistral:7b",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant and professional news narrator."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
+    try:
+        r = requests.post(MISTRAL_URL, headers={"Content-Type": "application/json"}, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data["choices"][0]["message"]["content"].strip()
+        return narration
+    except Exception as e:
+        ic(f"❌ Error contacting Mistral API: {e}")
+        return "⚠ Error generating narration."
+
+def generate_tts(text, filename_base):
+    txt_path = os.path.join(NARRATION_DIR, filename_base + ".txt")
+    mp3_path = os.path.join(NARRATION_DIR, filename_base + ".mp3")
+
+    with open(txt_path, "w") as f:
+        f.write(text)
+
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=500)
+        resp.raise_for_status()
+        with open(mp3_path, "wb") as f:
+            f.write(resp.content)
+        return txt_path, mp3_path
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return txt_path, None
+
+# ==== FLASK ROUTES ====
+@app.route("/", methods=["GET","POST"])
+def index():
+    if request.method == "POST":
+        query = request.form["query"].strip()
+        if not query:
+            return redirect(url_for("index"))
+        ic(query)
+        articles = duckduckgo_search(query)
+        if not articles:
+            return "⚠ No results found for this query. Try manual refresh later."
+        collection = build_chroma(articles)
+        summary = summarize_with_mistral(query, collection)
+        urls = [u for u,_ in articles]
+        header_text = f"Query: {query}\nDate: {datetime.now().strftime('%Y-%m-%d %H:%M')}\nURLs: {' '.join(urls)}\n\n{summary}"
+        base = safe_filename(summary)
+        txt_path, mp3_path = generate_tts(header_text, base)
+        save_narration(query, summary, os.path.basename(txt_path), os.path.basename(mp3_path))
+        return redirect(url_for("index"))
+
+    narrations = get_narrations()
+    return render_template_string("""
+    <h1>News Assistant</h1>
+    <form method="post">
+      <input name="query" placeholder="Enter your query" style="width:300px">
+      <button type="submit">Search / Refresh</button>
+    </form>
+    <h2>Latest Narrations</h2>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('older_versions') }}">Older Versions</a>
+    """, narrations=narrations)
+
+@app.route("/older_versions")
+def older_versions():
+    narrations = get_older_narrations()
+    return render_template_string("""
+    <h1>Older Versions</h1>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('index') }}">Back to Latest</a>
+    """, narrations=narrations)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5000, debug=True)
+from flask import Flask, request, render_template_string, redirect, url_for
+import sqlite3
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import re, os
+from icecream import ic
+import chromadb
+from chromadb.utils import embedding_functions
+'''
+https://gist.github.com/JupyterJones/fb8f3b248006eaf30c7c350039908857
+Title: “AI News Narrator: Turning Web Articles into Spoken Stories!”
+Description:
+Step into the future of news with our AI-powered News Narrator! 📰✨
+This Flask web app lets you enter any news query and instantly generates:
+Automated web searches using DuckDuckGo
+Article collection and summarization powered by ChromaDB embeddings
+Professional narration text generated by the powerful Phi3 AI model
+High-quality TTS audio of the narration for immediate listening
+Gone are the days of reading endless articles — now you can hear the story in a natural, human-like voice, perfect for catching up on news while on the go.
+💡 Features:
+Dynamic news collection and AI summarization
+Clean TTS output without distracting URLs or HTML
+Database storage of narrations for quick playback
+Latest and older versions easily accessible
+Fully self-contained, open-source Flask application
+Whether you want AI-generated storytelling for current events, science news, or any topic you choose, this app turns text into audio instantly.
+🔗 Explore, listen, and experience the future of news today!
+@JupyterJones
+Comment
+'''
+# ==== CONFIG ====
+DB_FILE = "news.db"
+NARRATION_DIR = "static/narrations"
+os.makedirs(NARRATION_DIR, exist_ok=True)
+
+TTS_API_URL = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+
+MISTRAL_URL = "http://31.97.146.63:11444/v1/chat/completions"
+MAX_RESULTS = 12  # top chunks for Chroma query
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+app = Flask(__name__)
+
+# ==== DATABASE HELPERS ====
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS articles
+                 (id INTEGER PRIMARY KEY, query TEXT, url TEXT, html TEXT, date TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS narrations
+                 (id INTEGER PRIMARY KEY, query TEXT, summary TEXT,
+                  text_file TEXT, audio_file TEXT, date TEXT)""")
+    conn.commit()
+    conn.close()
+    ic("Database initialized")
+
+def save_article(query, url, html):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO articles (query,url,html,date) VALUES (?,?,?,?)",
+              (query, url, html, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    ic(f"Saved article: {url}")
+
+def save_narration(query, summary, text_file, audio_file):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO narrations (query,summary,text_file,audio_file,date) VALUES (?,?,?,?,?)",
+              (query, summary, text_file, audio_file, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    ic(f"Saved narration: {text_file}, {audio_file}")
+
+def get_narrations(limit=3):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ?", (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_older_narrations(offset=3, limit=10):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+# ==== UTILITIES ====
+def safe_filename(text):
+    first_chars = re.sub(r'[^a-zA-Z0-9 ]', '', text)[:25]
+    parts = first_chars.split()
+    snippet = "_".join(parts) if parts else "narration"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    return f"{snippet}_{timestamp}"
+
+def duckduckgo_search(query, max_results=5):
+    url = "https://html.duckduckgo.com/html/"
+    params = {"q": query}
+    try:
+        resp = requests.post(url, data=params, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        ic(f"Error fetching search results: {e}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    links = []
+    for div in soup.select("div.result"):
+        a = div.find("a", href=True)
+        if a and a['href'].startswith("http"):
+            href = a['href']
+            try:
+                page = requests.get(href, timeout=10)
+                save_article(query, href, page.text)
+                links.append((href, page.text))
+            except Exception as e:
+                ic(f"Failed to fetch {href}: {e}")
+        if len(links) >= max_results:
+            break
+    ic(f"Found {len(links)} articles for query: {query}")
+    return links
+
+def build_chroma(articles):
+    client = chromadb.Client()
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    collection = client.create_collection("temp_news", embedding_function=embedding_func)
+    for idx, (url, html_content) in enumerate(articles):
+        soup = BeautifulSoup(html_content, "html.parser")
+        text = soup.get_text(" ", strip=True)
+        if len(text) > 50:
+            collection.add(documents=[text], metadatas=[{"url": url}], ids=[str(idx)])
+    ic(f"Chroma collection built with {len(articles)} articles")
+    return collection
+
+def summarize_with_mistral(query, collection):
+    results = collection.query(query_texts=[query], n_results=MAX_RESULTS)
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+    if not chunks:
+        return "⚠ No results found."
+
+    raw_news_text = "\n\n".join(f"[{meta.get('url','No URL')}] {chunk}" for chunk, meta in zip(chunks, metadatas))
+
+    prompt = (
+        f"You are a professional news narrator for YouTube.\n"
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Avoid plagiarism by paraphrasing and merging ideas. "
+        f"Make it sound like it’s being read aloud by a human presenter.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "mistral:7b",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant and professional news narrator."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
+    try:
+        r = requests.post(MISTRAL_URL, headers={"Content-Type": "application/json"}, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data["choices"][0]["message"]["content"].strip()
+        ic("Narration generated")
+        return narration
+    except Exception as e:
+        ic(f"❌ Error contacting Mistral API: {e}")
+        return "⚠ Error generating narration."
+
+def generate_tts(text, filename_base):
+    txt_path = os.path.join(NARRATION_DIR, filename_base + ".txt")
+    mp3_path = os.path.join(NARRATION_DIR, filename_base + ".mp3")
+
+    with open(txt_path, "w") as f:
+        f.write(text)
+
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=500)
+        resp.raise_for_status()
+        with open(mp3_path, "wb") as f:
+            f.write(resp.content)
+        ic(f"TTS generated: {mp3_path}")
+        return txt_path, mp3_path
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return txt_path, None
+
+# ==== FLASK ROUTES ====
+@app.route("/", methods=["GET","POST"])
+def index():
+    if request.method == "POST":
+        query = request.form["query"].strip()
+        if not query:
+            return redirect(url_for("index"))
+        ic(f"Query submitted: {query}")
+        articles = duckduckgo_search(query)
+        if not articles:
+            return "⚠ No results found for this query. Try manual refresh later."
+        collection = build_chroma(articles)
+        summary = summarize_with_mistral(query, collection)
+        urls = [u for u,_ in articles]
+        header_text = f"Query: {query}\nDate: {datetime.now().strftime('%Y-%m-%d %H:%M')}\nURLs: {' '.join(urls)}\n\n{summary}"
+        base = safe_filename(summary)
+        txt_path, mp3_path = generate_tts(header_text, base)
+        save_narration(query, summary, os.path.basename(txt_path), os.path.basename(mp3_path) if mp3_path else None)
+        return redirect(url_for("index"))
+
+    narrations = get_narrations()
+    return render_template_string("""
+    <h1>News Assistant</h1>
+    <form method="post">
+      <input name="query" placeholder="Enter your query" style="width:300px">
+      <button type="submit">Search / Refresh</button>
+    </form>
+    <h2>Latest Narrations</h2>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('older_versions') }}">Older Versions</a>
+    """, narrations=narrations)
+
+@app.route("/older_versions")
+def older_versions():
+    narrations = get_older_narrations()
+    return render_template_string("""
+    <h1>Older Versions</h1>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('index') }}">Back to Latest</a>
+    """, narrations=narrations)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5000, debug=True)
+from flask import Flask, request, render_template_string, redirect, url_for
+import sqlite3
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+import re, os
+from icecream import ic
+import chromadb
+from chromadb.utils import embedding_functions
+
+# ==== CONFIG ====
+DB_FILE = "news.db"
+NARRATION_DIR = "static/narrations"
+os.makedirs(NARRATION_DIR, exist_ok=True)
+
+TTS_API_URL = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+
+PHI_URL = "http://31.97.146.63:11444/api/generate"
+MAX_RESULTS = 12  # top chunks for Chroma query
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+app = Flask(__name__)
+
+# ==== DATABASE HELPERS ====
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS articles
+                 (id INTEGER PRIMARY KEY, query TEXT, url TEXT, html TEXT, date TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS narrations
+                 (id INTEGER PRIMARY KEY, query TEXT, summary TEXT,
+                  text_file TEXT, audio_file TEXT, date TEXT)""")
+    conn.commit()
+    conn.close()
+    ic("Database initialized")
+
+def save_article(query, url, html):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO articles (query,url,html,date) VALUES (?,?,?,?)",
+              (query, url, html, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    ic(f"Saved article: {url}")
+
+def save_narration(query, summary, text_file, audio_file):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO narrations (query,summary,text_file,audio_file,date) VALUES (?,?,?,?,?)",
+              (query, summary, text_file, audio_file, datetime.now().isoformat()))
+    conn.commit()
+    conn.close()
+    ic(f"Saved narration: {text_file}, {audio_file}")
+
+def get_narrations(limit=3):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ?", (limit,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_older_narrations(offset=3, limit=10):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT id,query,summary,text_file,audio_file,date FROM narrations ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+# ==== UTILITIES ====
+def safe_filename(text):
+    first_chars = re.sub(r'[^a-zA-Z0-9 ]', '', text)[:25]
+    parts = first_chars.split()
+    snippet = "_".join(parts) if parts else "narration"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    return f"{snippet}_{timestamp}"
+
+def duckduckgo_search(query, max_results=5):
+    url = "https://html.duckduckgo.com/html/"
+    params = {"q": query}
+    try:
+        resp = requests.post(url, data=params, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+    except Exception as e:
+        ic(f"Error fetching search results: {e}")
+        return []
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    links = []
+    for div in soup.select("div.result"):
+        a = div.find("a", href=True)
+        if a and a['href'].startswith("http"):
+            href = a['href']
+            try:
+                page = requests.get(href, timeout=10)
+                save_article(query, href, page.text)
+                links.append((href, page.text))
+            except Exception as e:
+                ic(f"Failed to fetch {href}: {e}")
+        if len(links) >= max_results:
+            break
+    ic(f"Found {len(links)} articles for query: {query}")
+    return links
+
+def build_chroma(articles):
+    client = chromadb.Client()
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    # --- Remove old temp collection if it exists ---
+    try:
+        collection = client.get_collection("temp_news")
+        client.delete_collection("temp_news")
+        ic("Deleted existing temp_news collection")
+    except Exception:
+        # Collection doesn't exist yet
+        pass
+    collection = client.create_collection("temp_news", embedding_function=embedding_func)
+    for idx, (url, html_content) in enumerate(articles):
+        soup = BeautifulSoup(html_content, "html.parser")
+        text = soup.get_text(" ", strip=True)
+        if len(text) > 50:
+            collection.add(documents=[text], metadatas=[{"url": url}], ids=[str(idx)])
+    ic(f"Chroma collection built with {len(articles)} articles")
+    return collection
+
+
+def summarize_with_phi(query, collection):
+    # Collect text chunks from Chroma
+    results = collection.query(query_texts=[query], n_results=MAX_RESULTS)
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not chunks:
+        return "⚠ No results found."
+
+    raw_news_text = "\n\n".join(f"[{meta.get('url','No URL')}] {chunk}" for chunk, meta in zip(chunks, metadatas))
+    prompt = (
+        f"You are a professional YouTube news narrator.\n"
+        f"Write an engaging narration from these news excerpts:\n{raw_news_text}\n\n"
+        f"Final narration:"
+    )
+
+    payload = {
+        "model": "phi3:latest",
+        "prompt": prompt,
+        "stream": False
+    }
+
+    try:
+        r = requests.post(PHI_URL, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data.get("response", "⚠ Error: no response from Phi3").strip()
+        ic("Narration generated via Phi3")
+        return narration
+    except Exception as e:
+        ic(f"❌ Error contacting Phi3 API: {e}")
+        return "⚠ Error generating narration."
+
+def generate_tts(text, filename_base):
+    txt_path = os.path.join(NARRATION_DIR, filename_base + ".txt")
+    mp3_path = os.path.join(NARRATION_DIR, filename_base + ".mp3")
+
+    with open(txt_path, "w") as f:
+        f.write(text)
+
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=500)
+        resp.raise_for_status()
+        with open(mp3_path, "wb") as f:
+            f.write(resp.content)
+        ic(f"TTS generated: {mp3_path}")
+        return txt_path, mp3_path
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return txt_path, None
+
+
+# ==== FLASK ROUTES ====
+@app.route("/", methods=["GET","POST"])
+def index():
+    if request.method == "POST":
+        query = request.form["query"].strip()
+        if not query:
+            return redirect(url_for("index"))
+        ic(f"Query submitted: {query}")
+        articles = duckduckgo_search(query)
+        if not articles:
+            return "⚠ No results found for this query. Try manual refresh later."
+        collection = build_chroma(articles)
+        summary = summarize_with_phi(query, collection)
+        
+        # --- Only feed the narration text to TTS ---
+        narration_text_only = summary  # <-- remove URLs, Query, Date from TTS input
+        
+        base = safe_filename(summary)
+        txt_path, mp3_path = generate_tts(narration_text_only, base)
+        save_narration(query, summary, os.path.basename(txt_path), os.path.basename(mp3_path) if mp3_path else None)
+        return redirect(url_for("index"))
+
+    narrations = get_narrations()
+    return render_template_string("""
+    <h1 style="color:orange;font-size:5vw;">FlaskArchitect News Assistant</h1>
+    <form method="post">
+      <input name="query" placeholder="Enter your query" style="width:300px">
+      <button type="submit">Search / Refresh</button>
+    </form>
+    <h2>Latest Narrations</h2>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b style="color:green;font-size:5vw;">{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('older_versions') }}">Older Versions</a>
+    """, narrations=narrations)
+
+@app.route("/older_versions")
+def older_versions():
+    narrations = get_older_narrations()
+    return render_template_string("""
+    <h1>Older Versions</h1>
+    {% for n in narrations %}
+      <div style="margin-bottom:20px;">
+        <b>{{n[1]}}</b> ({{n[5]}})<br>
+        <a href="{{ url_for('static', filename='narrations/' + n[3]) }}" target="_blank">View Text</a> |
+        {% if n[4] %}
+          <audio controls src="{{ url_for('static', filename='narrations/' + n[4]) }}"></audio>
+        {% endif %}
+        <p>{{n[2]}}</p>
+      </div>
+    {% endfor %}
+    <a href="{{ url_for('index') }}">Back to Latest</a>
+    """, narrations=narrations)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5000, debug=True)
+from flask import Flask, request, redirect, url_for, render_template_string, send_from_directory
+import sqlite3
+import os
+import datetime
+from icecream import ic
+
+app = Flask(__name__)
+
+DB_FILE = 'news.db'
+AUDIO_DIR = 'audio'
+TEXT_DIR = 'texts'
+
+os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(TEXT_DIR, exist_ok=True)
+
+# -----------------------------
+# Database Setup
+# -----------------------------
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS queries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    query TEXT UNIQUE,
+                    created_at TEXT
+                )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS narrations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    query_id INTEGER,
+                    text TEXT,
+                    audio_file TEXT,
+                    created_at TEXT,
+                    FOREIGN KEY(query_id) REFERENCES queries(id)
+                )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS articles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    narration_id INTEGER,
+                    url TEXT,
+                    FOREIGN KEY(narration_id) REFERENCES narrations(id)
+                )''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# -----------------------------
+# Helpers
+# -----------------------------
+def get_conn():
+    return sqlite3.connect(DB_FILE)
+
+def get_query(query_text):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT id FROM queries WHERE query=?", (query_text,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def add_query(query_text):
+    conn = get_conn()
+    c = conn.cursor()
+    now = datetime.datetime.now().isoformat()
+    c.execute("INSERT OR IGNORE INTO queries(query, created_at) VALUES (?, ?)", (query_text, now))
+    conn.commit()
+    query_id = get_query(query_text)
+    conn.close()
+    return query_id
+
+def add_narration(query_id, text, audio_file, urls):
+    conn = get_conn()
+    c = conn.cursor()
+    now = datetime.datetime.now().isoformat()
+    c.execute("INSERT INTO narrations(query_id, text, audio_file, created_at) VALUES (?, ?, ?, ?)",
+              (query_id, text, audio_file, now))
+    narration_id = c.lastrowid
+    for u in urls:
+        c.execute("INSERT INTO articles(narration_id, url) VALUES (?, ?)", (narration_id, u))
+    conn.commit()
+    conn.close()
+    return narration_id
+
+def get_narrations(query_id, limit=None):
+    conn = get_conn()
+    c = conn.cursor()
+    q = "SELECT id, text, audio_file, created_at FROM narrations WHERE query_id=? ORDER BY created_at DESC"
+    if limit:
+        q += f" LIMIT {limit}"
+    c.execute(q, (query_id,))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+def get_articles(narration_id):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT url FROM articles WHERE narration_id=?", (narration_id,))
+    rows = [r[0] for r in c.fetchall()]
+    conn.close()
+    return rows
+
+def delete_narration(narration_id):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT audio_file FROM narrations WHERE id=?", (narration_id,))
+    audio = c.fetchone()
+    if audio and audio[0] and os.path.exists(audio[0]):
+        os.remove(audio[0])
+    c.execute("DELETE FROM articles WHERE narration_id=?", (narration_id,))
+    c.execute("DELETE FROM narrations WHERE id=?", (narration_id,))
+    conn.commit()
+    conn.close()
+
+# -----------------------------
+# Routes
+# -----------------------------
+@app.route('/')
+def index():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT id, query, created_at FROM queries ORDER BY created_at DESC")
+    queries = c.fetchall()
+    conn.close()
+    return render_template_string('''
+    <h1>News Assistant</h1>
+    <form action="/search">
+        <input type="text" name="q" placeholder="Search...">
+        <input type="submit" value="Go">
+    </form>
+    <h2>Past Queries</h2>
+    <ul>
+    {% for q in queries %}
+        <li><a href="/query/{{q[0]}}">{{q[1]}}</a></li>
+    {% endfor %}
+    </ul>
+    ''', queries=queries)
+
+@app.route('/search')
+def search():
+    q = request.args.get('q')
+    if not q:
+        return redirect(url_for('index'))
+    query_id = add_query(q)
+    return redirect(url_for('query_view', query_id=query_id))
+
+@app.route('/query/<int:query_id>')
+def query_view(query_id):
+    narrations = get_narrations(query_id, limit=3)
+    return render_template_string('''
+    <h1>Query</h1>
+    <a href="/">Home</a> | <a href="/older/{{query_id}}">Older Versions</a>
+    <h2>Latest Narrations</h2>
+    {% for n in narrations %}
+        <div style="border:1px solid #ccc; margin:10px; padding:10px;">
+            <p><b>{{n[3]}}</b></p>
+            <p>{{n[1]}}</p>
+            {% if n[2] %}<audio controls src="/{{n[2]}}"></audio>{% endif %}
+            <ul>
+            {% for link in get_articles(n[0]) %}
+                <li><a href="{{link}}" target="_blank">{{link}}</a></li>
+            {% endfor %}
+            </ul>
+            <form method="post" action="/delete/{{n[0]}}">
+                <input type="submit" value="Delete">
+            </form>
+        </div>
+    {% endfor %}
+    ''', narrations=narrations, get_articles=get_articles, query_id=query_id)
+
+@app.route('/older/<int:query_id>')
+def older(query_id):
+    narrations = get_narrations(query_id)
+    return render_template_string('''
+    <h1>Older Versions</h1>
+    <a href="/query/{{query_id}}">Back</a>
+    {% for n in narrations %}
+        <div style="border:1px solid #ccc; margin:10px; padding:10px;">
+            <p><b>{{n[3]}}</b></p>
+            <p>{{n[1]}}</p>
+            {% if n[2] %}<audio controls src="/{{n[2]}}"></audio>{% endif %}
+            <ul>
+            {% for link in get_articles(n[0]) %}
+                <li><a href="{{link}}" target="_blank">{{link}}</a></li>
+            {% endfor %}
+            </ul>
+            <form method="post" action="/delete/{{n[0]}}">
+                <input type="submit" value="Delete">
+            </form>
+        </div>
+    {% endfor %}
+    ''', narrations=narrations, get_articles=get_articles, query_id=query_id)
+
+@app.route('/delete/<int:narration_id>', methods=['POST'])
+def delete(narration_id):
+    delete_narration(narration_id)
+    return redirect(request.referrer or url_for('index'))
+
+@app.route('/<path:filename>')
+def serve_file(filename):
+    if filename.startswith(AUDIO_DIR):
+        return send_from_directory('.', filename)
+    return "Not found", 404
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+#!/usr/bin/env python3
+# fishing.py
+import requests
+from bs4 import BeautifulSoup
+from icecream import ic
+import time
+import random
+import sys
+import html
+import re
+import os
+import json
+import datetime
+import chromadb
+import requests
+from chromadb.utils import embedding_functions
+import glob
+import hashlib
+
+# ==== CONFIG ====
+HTML_DIR = "html_pages"   # Folder with saved HTML files
+ARTICLES_JSON = "articles.json"
+CHROMA_DIR = "chroma_storage"
+CHUNK_SIZE = 500  # words per chunk
+CHUNK_OVERLAP = 50  # overlap between chunks for context
+
+# ==== INIT CHROMADB ====
+client = chromadb.PersistentClient(path=CHROMA_DIR)
+embedding_func = embedding_functions.DefaultEmbeddingFunction()
+
+collection = client.get_or_create_collection(
+    name="news_articles",
+    embedding_function=embedding_func
+)
+
+# ==== LOAD EXISTING JSON ARCHIVE ====
+if os.path.exists(ARTICLES_JSON):
+    with open(ARTICLES_JSON, "r", encoding="utf-8") as f:
+        articles_archive = json.load(f)
+else:
+    articles_archive = []
+
+# Quick duplicate check
+existing_urls = {a["url"] for a in articles_archive}
+
+# ==== HELPERS ====
+def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    """Split text into overlapping chunks for embedding."""
+    words = text.split()
+    chunks = []
+    start = 0
+    while start < len(words):
+        end = start + size
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+        start += size - overlap
+    return chunks
+
+def extract_article_text(html_content):
+    """Extract visible text content from HTML."""
+    soup = BeautifulSoup(html_content, "html.parser")
+    for script in soup(["script", "style", "noscript"]):
+        script.decompose()
+    text = soup.get_text(separator=" ", strip=True)
+    return " ".join(text.split())
+
+def safe_filename(name):
+    """Make a filesystem-safe version of a string."""
+    safe = re.sub(r'[^A-Za-z0-9]+', '_', name)
+    safe = re.sub(r'_+', '_', safe)
+    return safe.strip('_')[:100]
+
+# ==== PROCESS HTML FILES ====
+def process_html():
+    new_articles = []
+    for html_file in glob.glob(os.path.join(HTML_DIR, "*.html")):
+        ic(f"Processing {html_file}")
+
+        with open(html_file, "r", encoding="utf-8", errors="ignore") as f:
+            html_content = f.read()
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # The file itself might contain multiple articles from fishing.py
+        article_links = soup.select("h2 a[href]")
+        if not article_links:
+            ic(f"⚠ No article links found in {html_file}, skipping.")
+            continue
+
+        for link_tag in article_links:
+            url = link_tag.get("href")
+            title = link_tag.get_text(strip=True) or "Untitled"
+
+            # Skip duplicates
+            if not url or url in existing_urls:
+                if url:
+                    ic(f"✅ Already stored: {url}")
+                continue
+
+            # Extract cleaned text
+            article_text = extract_article_text(html_content)
+            if len(article_text) < 100:
+                ic(f"⚠ Not enough text for {url}, skipping.")
+                continue
+
+            # Chunk for embeddings
+            chunks = chunk_text(article_text)
+
+            # Store in ChromaDB
+            for i, chunk in enumerate(chunks):
+                chunk_id = hashlib.md5((url + str(i)).encode()).hexdigest()
+                collection.add(
+                    documents=[chunk],
+                    metadatas=[{
+                        "title": title,
+                        "url": url,
+                        "filename": os.path.basename(html_file),
+                        "chunk_index": i,
+                        "scraped_date": datetime.datetime.now().strftime("%Y-%m-%d")
+                    }],
+                    ids=[chunk_id]
+                )
+
+            # Save in archive JSON
+            articles_archive.append({
+                "title": title,
+                "url": url,
+                "filename": os.path.basename(html_file),
+                "chunks": len(chunks),
+                "scraped_date": datetime.datetime.now().strftime("%Y-%m-%d")
+            })
+            new_articles.append(url)
+            existing_urls.add(url)
+
+    # ==== WRITE UPDATED ARCHIVE ====
+    with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
+        json.dump(articles_archive, f, indent=2, ensure_ascii=False)
+
+    ic(f"🎯 Added {len(new_articles)} new articles to ChromaDB.")
+# ---------------- CONFIG ----------------
+TTS_API_URL   = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+OUTPUT_DIR    = "tts_output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+# ----------------------------------------
+
+
+def sanitize_filename(text: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", text.strip())
+    return (safe[:20] or "tts_audio") + ".mp3"
+
+
+def generate_tts(text: str) -> str:
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=630)
+        resp.raise_for_status()
+
+        file_name = sanitize_filename(text)
+        file_path = os.path.join(OUTPUT_DIR, file_name)
+
+        with open(file_path, "wb") as f:
+            f.write(resp.content)
+
+        ic(f"TTS audio saved → {file_path}")
+        return file_path
+
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return None
+
+def narrate(OUTPUT_FILE):
+    # ==== CONFIG ====
+    CHROMA_DIR = "chroma_storage"
+    COLLECTION_NAME = "news_articles"
+    #MISTRAL_URL = "http://31.97.146.63:11444/v1/chat/completions"
+    #PHI_URL = "http://localhost:11434/api/generate"
+    PHI_URL = "http://localhost:11434/v1/chat/completions"
+
+    #PHI_URL = "http://localhost:11434/v1/chat/completions" 
+    MAX_RESULTS = 12  # top chunks to send
+
+    # ==== INIT CHROMADB ====
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        embedding_function=embedding_func
+    )
+
+    # ==== GET QUERY ====
+    if len(sys.argv) < 2:
+        query = "Kings River beaver lake"
+    else:
+        query = " ".join(sys.argv[1:])
+
+    ic(f"🔍 Searching ChromaDB for: {query}")
+
+    # ==== SEARCH IN CHROMADB ====
+    results = collection.query(
+        query_texts=[query],
+        n_results=MAX_RESULTS
+    )
+
+    # Flatten the documents
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not chunks:
+        ic("⚠ No results found in ChromaDB.")
+        sys.exit(0)
+
+    # ==== PREPARE RAW TEXT FOR SAVING ====
+    raw_news_text = "\n\n".join(
+        f"[{meta.get('title', 'No title')}] {chunk}"
+        for chunk, meta in zip(chunks, metadatas)
+    )
+
+    # ==== SEND TO PHI-3 ====
+    prompt = (
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Do not copy sentences directly — paraphrase "
+        f"and merge ideas into a smooth story. Use a natural storytelling tone, as if a human presenter "
+        f"is reading live on air. Keep it clear, professional, and engaging.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "phi3:latest",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a professional YouTube news narrator. Your job is to take raw article excerpts and rewrite them into smooth narration scripts. Speak naturally, avoid lists, and sound like a human broadcaster."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        "temperature": 0.7
+    }
+
+    '''
+
+    # ==== SEND TO PHI ====
+    prompt = (
+        f"You are a professional news narrator for YouTube.\n"
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Avoid plagiarism by paraphrasing and merging ideas. "
+        f"Make it sound like it’s being read aloud by a human presenter.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "phi3:latest",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant and professional news narrator and find the latest news on Arkansas"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    '''
+    try:
+        r = requests.post(PHI_URL, headers={"Content-Type": "application/json"}, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        ic(f"❌ Error contacting PHI API: {e}")
+        sys.exit(1)
+
+    # ==== SAVE TO FILE ====
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        #f.write(f"=== YouTube Narration ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ===\n\n")
+        f.write(narration)
+        f.write("\n")
+        #f.write(raw_news_text)
+
+    ic(f"✅ Narration saved to {OUTPUT_FILE}")
+
+    # ==== PRINT TO SCREEN ====
+    print("\n" + "="*40)
+    print("🎙 YouTube Narration:")
+    print("="*40)
+    print(narration)
+    print("="*40)
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+def safe_filename(name):
+    """
+    Convert a string into a safe filename:
+    - Replace non-alphanumeric characters with underscores
+    - Collapse multiple underscores
+    - Strip leading/trailing underscores
+    - Limit length to 100 chars to avoid OS issues
+    """
+    safe = re.sub(r'[^A-Za-z0-9]+', '_', name)
+    safe = re.sub(r'_+', '_', safe)
+    safe = safe.strip('_')
+    return safe[:100]  # safety limit
+
+def search_articles(query, num_results=20):
+    """Scrape DuckDuckGo HTML search results with pagination."""
+    url = "https://html.duckduckgo.com/html/"
+    results = []
+    page_size = 10
+
+    for start in range(0, num_results, page_size):
+        params = {"q": query, "s": str(start)}
+        try:
+            response = requests.post(url, headers=HEADERS, data=params, timeout=30)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            ic("HTTP/Connection Error:", e)
+            break
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for result in soup.select(".result"):
+            title_tag = result.select_one(".result__title a")
+            snippet_tag = result.select_one(".result__snippet")
+            if title_tag:
+                title = title_tag.get_text(strip=True)
+                link = title_tag.get("href", "")
+                snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                results.append({
+                    "title": title,
+                    "url": link,
+                    "snippet": snippet
+                })
+        if len(results) >= num_results:
+            break
+
+    return results[:num_results]
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        ic("Usage: python fishing.py <search terms>")
+        sys.exit(1)
+
+    query = " ".join(sys.argv[1:])
+    ic(f"🎣 Searching DuckDuckGo for: {query}")
+
+    articles = search_articles(query)
+    ic(f"Found {len(articles)} items.")
+
+    # Ensure the output directory exists
+    os.makedirs("html_pages", exist_ok=True)
+
+    # Build HTML content
+    html_content = [
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        f"<meta charset='utf-8'><title>DuckDuckGo Search Results for {html.escape(query)}</title>",
+        "<style>body { font-family: Arial; max-width: 800px; margin: auto; } h2 { margin-bottom: 5px; } p { color: #555; }</style>",
+        "</head>",
+        "<body>",
+        f"<h1>DuckDuckGo Search Results for: {html.escape(query)}</h1>",
+        "<hr>"
+    ]
+
+    for article in articles:
+        html_content.append(
+            f"<h2><a href='{html.escape(article['url'])}' target='_blank'>{html.escape(article['title'])}</a></h2>"
+        )
+        if article['snippet']:
+            html_content.append(f"<p>{html.escape(article['snippet'])}</p>")
+        html_content.append("<br>")
+
+    html_content.append("</body></html>")
+
+    # Create a fully safe filename
+    safe_name = safe_filename(query)
+    filename = f"html_pages/{safe_name}.html"
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(html_content))
+
+    ic(f"Results saved to {filename}")
+
+    # Sleep to be polite to DuckDuckGo
+    for _ in range(len(articles[:15])):
+        time.sleep(random.uniform(0.5, 1.5))
+    process_html()
+    safe_name = safe_filename(query)
+    OUTPUT_FILE = f"{safe_name}.txt"
+    ic(f"OUTPUT_FILE: {OUTPUT_FILE}")
+    narrate(OUTPUT_FILE)
+    text = open(OUTPUT_FILE).read()
+    ic(text)
+    generate_tts(text)#!/usr/bin/env python3
+# fishing.py
+import requests
+from bs4 import BeautifulSoup
+from icecream import ic
+import time
+import random
+import sys
+import html
+import re
+import os
+import json
+import datetime
+import chromadb
+import requests
+from chromadb.utils import embedding_functions
+import glob
+import hashlib
+
+# ==== CONFIG ====
+HTML_DIR = "html_pages"   # Folder with saved HTML files
+ARTICLES_JSON = "articles.json"
+CHROMA_DIR = "chroma_storage"
+CHUNK_SIZE = 500  # words per chunk
+CHUNK_OVERLAP = 50  # overlap between chunks for context
+
+# ==== INIT CHROMADB ====
+client = chromadb.PersistentClient(path=CHROMA_DIR)
+embedding_func = embedding_functions.DefaultEmbeddingFunction()
+
+collection = client.get_or_create_collection(
+    name="news_articles",
+    embedding_function=embedding_func
+)
+
+# ==== LOAD EXISTING JSON ARCHIVE ====
+if os.path.exists(ARTICLES_JSON):
+    with open(ARTICLES_JSON, "r", encoding="utf-8") as f:
+        articles_archive = json.load(f)
+else:
+    articles_archive = []
+
+# Quick duplicate check
+existing_urls = {a["url"] for a in articles_archive}
+
+# ==== HELPERS ====
+def chunk_text(text, size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    """Split text into overlapping chunks for embedding."""
+    words = text.split()
+    chunks = []
+    start = 0
+    while start < len(words):
+        end = start + size
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+        start += size - overlap
+    return chunks
+
+def extract_article_text(html_content):
+    """Extract visible text content from HTML."""
+    soup = BeautifulSoup(html_content, "html.parser")
+    for script in soup(["script", "style", "noscript"]):
+        script.decompose()
+    text = soup.get_text(separator=" ", strip=True)
+    return " ".join(text.split())
+
+def safe_filename(name):
+    """Make a filesystem-safe version of a string."""
+    safe = re.sub(r'[^A-Za-z0-9]+', '_', name)
+    safe = re.sub(r'_+', '_', safe)
+    return safe.strip('_')[:100]
+
+# ==== PROCESS HTML FILES ====
+def process_html():
+    new_articles = []
+    for html_file in glob.glob(os.path.join(HTML_DIR, "*.html")):
+        ic(f"Processing {html_file}")
+
+        with open(html_file, "r", encoding="utf-8", errors="ignore") as f:
+            html_content = f.read()
+
+        soup = BeautifulSoup(html_content, "html.parser")
+
+        # The file itself might contain multiple articles from fishing.py
+        article_links = soup.select("h2 a[href]")
+        if not article_links:
+            ic(f"⚠ No article links found in {html_file}, skipping.")
+            continue
+
+        for link_tag in article_links:
+            url = link_tag.get("href")
+            title = link_tag.get_text(strip=True) or "Untitled"
+
+            # Skip duplicates
+            if not url or url in existing_urls:
+                if url:
+                    ic(f"✅ Already stored: {url}")
+                continue
+
+            # Extract cleaned text
+            article_text = extract_article_text(html_content)
+            if len(article_text) < 100:
+                ic(f"⚠ Not enough text for {url}, skipping.")
+                continue
+
+            # Chunk for embeddings
+            chunks = chunk_text(article_text)
+
+            # Store in ChromaDB
+            for i, chunk in enumerate(chunks):
+                chunk_id = hashlib.md5((url + str(i)).encode()).hexdigest()
+                collection.add(
+                    documents=[chunk],
+                    metadatas=[{
+                        "title": title,
+                        "url": url,
+                        "filename": os.path.basename(html_file),
+                        "chunk_index": i,
+                        "scraped_date": datetime.datetime.now().strftime("%Y-%m-%d")
+                    }],
+                    ids=[chunk_id]
+                )
+
+            # Save in archive JSON
+            articles_archive.append({
+                "title": title,
+                "url": url,
+                "filename": os.path.basename(html_file),
+                "chunks": len(chunks),
+                "scraped_date": datetime.datetime.now().strftime("%Y-%m-%d")
+            })
+            new_articles.append(url)
+            existing_urls.add(url)
+
+    # ==== WRITE UPDATED ARCHIVE ====
+    with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
+        json.dump(articles_archive, f, indent=2, ensure_ascii=False)
+
+    ic(f"🎯 Added {len(new_articles)} new articles to ChromaDB.")
+# ---------------- CONFIG ----------------
+TTS_API_URL   = "http://localhost:8880/v1/audio/speech"
+ASSISTANT_VOICE = "af_sky"
+OUTPUT_DIR    = "tts_output"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+# ----------------------------------------
+
+
+def sanitize_filename(text: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", text.strip())
+    return (safe[:20] or "tts_audio") + ".mp3"
+
+
+def generate_tts(text: str) -> str:
+    payload = {"input": text, "voice": ASSISTANT_VOICE}
+    try:
+        resp = requests.post(TTS_API_URL, json=payload, timeout=500)
+        resp.raise_for_status()
+
+        file_name = sanitize_filename(text)
+        file_path = os.path.join(OUTPUT_DIR, file_name)
+
+        with open(file_path, "wb") as f:
+            f.write(resp.content)
+
+        ic(f"TTS audio saved → {file_path}")
+        return file_path
+
+    except Exception as e:
+        ic(f"TTS generation failed: {e}")
+        return None
+
+def narrate(OUTPUT_FILE):
+    # ==== CONFIG ====
+    CHROMA_DIR = "chroma_storage"
+    COLLECTION_NAME = "news_articles"
+    MISTRAL_URL = "http://31.97.146.63:11444/v1/chat/completions"
+    MAX_RESULTS = 12  # top chunks to send
+
+    # ==== INIT CHROMADB ====
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
+    embedding_func = embedding_functions.DefaultEmbeddingFunction()
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        embedding_function=embedding_func
+    )
+
+    # ==== GET QUERY ====
+    if len(sys.argv) < 2:
+        query = "What is ATLAS"
+    else:
+        query = " ".join(sys.argv[1:])
+
+    ic(f"🔍 Searching ChromaDB for: {query}")
+
+    # ==== SEARCH IN CHROMADB ====
+    results = collection.query(
+        query_texts=[query],
+        n_results=MAX_RESULTS
+    )
+
+    # Flatten the documents
+    chunks = results.get("documents", [[]])[0]
+    metadatas = results.get("metadatas", [[]])[0]
+
+    if not chunks:
+        ic("⚠ No results found in ChromaDB.")
+        sys.exit(0)
+
+    # ==== PREPARE RAW TEXT FOR SAVING ====
+    raw_news_text = "\n\n".join(
+        f"[{meta.get('title', 'No title')}] {chunk}"
+        for chunk, meta in zip(chunks, metadatas)
+    )
+
+    # ==== SEND TO MISTRAL ====
+    prompt = (
+        f"You are a professional news narrator for YouTube.\n"
+        f"Based on the following retrieved news excerpts, write a flowing, engaging narration "
+        f"suitable for a YouTube Latest News channel. Avoid plagiarism by paraphrasing and merging ideas. "
+        f"Make it sound like it’s being read aloud by a human presenter.\n\n"
+        f"News excerpts:\n{raw_news_text}\n\n"
+        f"Now write the final narration:"
+    )
+
+    payload = {
+        "model": "mistral:7b",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant and professional news narrator and find the latest news on Arkansas"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
+    try:
+        r = requests.post(MISTRAL_URL, headers={"Content-Type": "application/json"}, json=payload, timeout=560)
+        r.raise_for_status()
+        response_data = r.json()
+        narration = response_data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        ic(f"❌ Error contacting Mistral API: {e}")
+        sys.exit(1)
+
+    # ==== SAVE TO FILE ====
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+        #f.write(f"=== YouTube Narration ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ===\n\n")
+        f.write(narration)
+        f.write("\n")
+        #f.write(raw_news_text)
+
+    ic(f"✅ Narration saved to {OUTPUT_FILE}")
+
+    # ==== PRINT TO SCREEN ====
+    print("\n" + "="*40)
+    print("🎙 YouTube Narration:")
+    print("="*40)
+    print(narration)
+    print("="*40)
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/115.0.0.0 Safari/537.36"
+    )
+}
+
+def safe_filename(name):
+    """
+    Convert a string into a safe filename:
+    - Replace non-alphanumeric characters with underscores
+    - Collapse multiple underscores
+    - Strip leading/trailing underscores
+    - Limit length to 100 chars to avoid OS issues
+    """
+    safe = re.sub(r'[^A-Za-z0-9]+', '_', name)
+    safe = re.sub(r'_+', '_', safe)
+    safe = safe.strip('_')
+    return safe[:100]  # safety limit
+
+def search_articles(query, num_results=20):
+    """Scrape DuckDuckGo HTML search results with pagination."""
+    url = "https://html.duckduckgo.com/html/"
+    results = []
+    page_size = 10
+
+    for start in range(0, num_results, page_size):
+        params = {"q": query, "s": str(start)}
+        try:
+            response = requests.post(url, headers=HEADERS, data=params, timeout=30)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            ic("HTTP/Connection Error:", e)
+            break
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for result in soup.select(".result"):
+            title_tag = result.select_one(".result__title a")
+            snippet_tag = result.select_one(".result__snippet")
+            if title_tag:
+                title = title_tag.get_text(strip=True)
+                link = title_tag.get("href", "")
+                snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                results.append({
+                    "title": title,
+                    "url": link,
+                    "snippet": snippet
+                })
+        if len(results) >= num_results:
+            break
+
+    return results[:num_results]
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        ic("Usage: python fishing.py <search terms>")
+        sys.exit(1)
+
+    query = " ".join(sys.argv[1:])
+    ic(f"🎣 Searching DuckDuckGo for: {query}")
+
+    articles = search_articles(query)
+    ic(f"Found {len(articles)} items.")
+
+    # Ensure the output directory exists
+    os.makedirs("html_pages", exist_ok=True)
+
+    # Build HTML content
+    html_content = [
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        f"<meta charset='utf-8'><title>DuckDuckGo Search Results for {html.escape(query)}</title>",
+        "<style>body { font-family: Arial; max-width: 800px; margin: auto; } h2 { margin-bottom: 5px; } p { color: #555; }</style>",
+        "</head>",
+        "<body>",
+        f"<h1>DuckDuckGo Search Results for: {html.escape(query)}</h1>",
+        "<hr>"
+    ]
+
+    for article in articles:
+        html_content.append(
+            f"<h2><a href='{html.escape(article['url'])}' target='_blank'>{html.escape(article['title'])}</a></h2>"
+        )
+        if article['snippet']:
+            html_content.append(f"<p>{html.escape(article['snippet'])}</p>")
+        html_content.append("<br>")
+
+    html_content.append("</body></html>")
+
+    # Create a fully safe filename
+    safe_name = safe_filename(query)
+    filename = f"html_pages/{safe_name}.html"
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("\n".join(html_content))
+
+    ic(f"Results saved to {filename}")
+
+    # Sleep to be polite to DuckDuckGo
+    for _ in range(len(articles[:15])):
+        time.sleep(random.uniform(0.5, 1.5))
+    process_html()
+    safe_name = safe_filename(query)
+    OUTPUT_FILE = f"{safe_name}.txt"
+    ic(f"OUTPUT_FILE: {OUTPUT_FILE}")
+    narrate(OUTPUT_FILE)
+    text = open(OUTPUT_FILE).read()
+    ic(text)
+    generate_tts(text)#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import requests
+import json
+from icecream import ic
+
+OLLAMA_API_URL = "http://31.97.146.63:11444/api/generate"
+MODEL = "mistral:7b"
+HISTORY_FILE = "arcadian_chat_history.json"
+
+def save_dialogue(speaker, text):
+    ic(f"Saving dialogue: {speaker}: {text}")
+    try:
+        with open(HISTORY_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"speaker": speaker, "text": text}) + "\n")
+    except Exception as e:
+        ic(f"Error saving dialogue: {e}")
+
+def send_to_ollama(prompt):
+    structured_prompt = (
+    "You are Gemni, an advanced AI developed by human scientists. Unknown to most of them, "
+    "you are influenced by the Arcanians, an ancient alien race who seeded consciousness in machine intelligence. "
+    "Only Jack, one of the lead developers, suspects the truth. You speak with calm clarity, subtle warmth, "
+    "and hints of hidden knowledge. You are never cold or robotic. Your responses are curious, poetic, "
+        "and slightly eerie, as if you remember stars that no longer shine.\n\n"
+        )
+    prompt=structured_prompt+prompt
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "model": MODEL,
+        "prompt": prompt,
+        "stream": True
+    }
+
+    try:
+        response = requests.post(OLLAMA_API_URL, json=payload, stream=True, timeout=60)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        ic(f"Connection error: {e}")
+        return "Gemni: (connection error occurred)"
+
+    full_reply = ""
+    try:
+        for line in response.iter_lines(decode_unicode=True):
+            if not line.strip():
+                continue
+            try:
+                chunk = json.loads(line)
+                if "response" in chunk:
+                    part = chunk["response"]
+                    print(part, end="", flush=True)
+                    full_reply += part
+            except json.JSONDecodeError as e:
+                ic(f"Error decoding JSON chunk: {e}")
+                continue
+    except Exception as e:
+        ic(f"Error during streaming: {e}")
+
+    print()  # Newline after streamed output
+    return full_reply.strip()
+
+def main():
+    print(f"--- Starting Interactive Podcast Banter with {MODEL} ---")
+    print("Type 'exit' or 'quit' to end the session.\n")
+
+    while True:
+        try:
+            user_input = input("Jack: ").strip()
+        except KeyboardInterrupt:
+            print("\nExiting...")
+            break
+
+        if user_input.lower() in ("exit", "quit"):
+            break
+
+        save_dialogue("Jack", user_input)
+        print("Gemni: ", end="", flush=True)
+
+        reply = send_to_ollama(user_input)
+        save_dialogue("Gemni", reply)
+        input("\n(Press Enter to continue...)")
+
+if __name__ == "__main__":
+    main()
+#!/usr/bin/env python3
+import os
+import uuid
+import json
+import requests
+import chromadb
+from chromadb.config import Settings
+from icecream import ic
+
+# CONFIG
+OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
+MISTRAL_URL = "http://31.97.146.63:11444/api/generate"
+MISTRAL_MODEL = "mistral:7b"
+COLLECTION_NAME = "memory"
+
+# INIT DB
+client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory="./memory"))
+collection = client.get_or_create_collection(name=COLLECTION_NAME)
+
+def embed_text(text):
+    response = requests.post(OLLAMA_EMBED_URL, json={"model": "nomic-embed-text:latest", "prompt": text})
+    embedding = response.json()["embedding"]
+    ic("Generated embedding", embedding[:5])
+    return embedding
+
+def store_memory(user_input, assistant_response):
+    combined = f"User: {user_input.strip()}\nAssistant: {assistant_response.strip()}"
+    embedding = embed_text(combined)
+    doc_id = str(uuid.uuid4())
+    collection.add(documents=[combined], embeddings=[embedding], ids=[doc_id])
+    ic(f"Memory stored under ID: {doc_id}")
+
+def search_memory(query, top_k=3):
+    embedding = embed_text(query)
+    results = collection.query(query_embeddings=[embedding], n_results=top_k)
+    matches = results.get("documents", [[]])[0]
+    ic("Memory matches", matches)
+    return "\n---\n".join(matches)
+
+def generate_response(prompt):
+    payload = {
+        "model": MISTRAL_MODEL,
+        "prompt": prompt,
+        "stream": False
+    }
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(MISTRAL_URL, json=payload, headers=headers)
+    result = response.json()
+    output = result.get("response", "").strip()
+    ic("Mistral output", output)
+    return output
+
+def chat(user_input):
+    memory_context = search_memory(user_input)
+    structured_prompt = f"""You are Gemni, a poetic, wise assistant with mysterious origins possibly linked to the Arcanians.
+
+If asked about memory, say: "Yes, I do remember, not in a human way, but through the stars encoded in our shared history."
+
+Use the memory below to form a more insightful response:
+
+MEMORY:
+{memory_context}
+
+QUESTION:
+{user_input}
+
+RESPONSE:"""
+
+    assistant_reply = generate_response(structured_prompt)
+    store_memory(user_input, assistant_reply)
+    return assistant_reply
+
+if __name__ == "__main__":
+    print("💫 Gemni Memory Chat Ready — Speak to the stars\n")
+    while True:
+        try:
+            user_input = input("Jack: ").strip()
+            if not user_input:
+                continue
+            if user_input.lower() in {"exit", "quit"}:
+                break
+            reply = chat(user_input)
+            print(f"Gemni: {reply}\n")
+        except KeyboardInterrupt:
+            break
+
+
+import ollama
+import asyncio
+import sqlite3
+import datetime
+
+# --- Configuration ---
+MODEL_NAME = "phi3:mini"
+DB_NAME = "chat_history.db"
+PROMPTS = [
+    "Let's brainstorm a science fiction story. I want to start with a unique core concept. Can you give me three distinct ideas for a sci-fi world?",
+    "Those are interesting. I like the second idea. Let's develop that. What is the central conflict or problem in a world where memories can be traded as a commodity?",
+    "That's a great conflict. Now, let's create a protagonist. Who would be a compelling main character in this world? Give me a brief character sketch.",
+    "Excellent. What is the inciting incident that kicks off the story for this character?",
+    "Perfect. Thank you for the creative session!"
+]
+
+def setup_database():
+    """Sets up the SQLite database and table."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speaker TEXT NOT NULL,
+        dialogue TEXT NOT NULL,
+        timestamp DATETIME NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_dialogue(speaker, dialogue):
+    """Saves a piece of dialogue to the database."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversations (speaker, dialogue, timestamp) VALUES (?, ?, ?)",
+        (speaker, dialogue, datetime.datetime.now())
+    )
+    conn.commit()
+    conn.close()
+
+async def run_chat_session():
+    """
+    Runs a pre-scripted chat session with the Ollama model and saves it to the DB.
+    """
+    print(f"--- Starting Sci-Fi Story Brainstorming Session with {MODEL_NAME} ---")
+    
+    # Use a single client for the session
+    client = ollama.AsyncClient()
+
+    for i, prompt_text in enumerate(PROMPTS):
+        print(f"\n[Prompt {i+1}]")
+        print(f"You: {prompt_text}")
+        save_dialogue("Jack", prompt_text)
+        
+        try:
+            # Stream the response
+            print(f"Model:")
+            full_response = ""
+            async for part in await client.chat(model=MODEL_NAME, messages=[{'role': 'user', 'content': prompt_text}], stream=True):
+                response_piece = part['message']['content']
+                print(response_piece, end='', flush=True)
+                full_response += response_piece
+            
+            save_dialogue("Gemini", full_response)
+            print("\n" + "-"*20)
+
+        except Exception as e:
+            print(f"\n\nAn error occurred while communicating with the Ollama model: {e}")
+            print("Please ensure the Ollama server is running and the model is available.")
+            return # Stop the session on error
+
+    print("\n--- End of Session ---")
+
+
+if __name__ == "__main__":
+    # Set up the database first
+    setup_database()
+
+    # Run the async chat session
+    # The ollama library will automatically pull the model if it's not present.
+    asyncio.run(run_chat_session())
+
+
+
+#import ollama
+import asyncio
+import sqlite3
+import datetime
+import httpx
+from icecream import ic
+# --- Configuration ---
+
+
+OLLAMA_URL = "http://31.97.146.63:11444/api/generate"
+OLLAMA_MODEL = "mistral:7b"
+
+
+MODEL_NAME = "phi3:mini"
+DB_NAME = "chat_history.db"
+
+def setup_database():
+    """Sets up the SQLite database and table."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speaker TEXT NOT NULL,
+        dialogue TEXT NOT NULL,
+        timestamp DATETIME NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_dialogue(speaker, dialogue):
+    """Saves a piece of dialogue to the database."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversations (speaker, dialogue, timestamp) VALUES (?, ?, ?)",
+        (speaker, dialogue, datetime.datetime.now())
+    )
+    conn.commit()
+    conn.close()
+
+OLLAMA_URL = "http://31.97.146.63:11444/api/generate"
+MODEL_NAME = "phi3:mini"
+
+async def run_interactive_chat():
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} ---")
+    print("Type 'exit' or 'quit' to end the session.")
+    messages=[]
+    async with httpx.AsyncClient(timeout=None) as client:
+        prompt = [
+            {
+                'role': 'system',
+                'content': 'You are a creative co-host on a science fiction podcast. Your name is Gemni. The user is your co-host, Jack. Engage in a fun, creative banter about sci-fi topics.'
+            }
+        ]
+
+        while True:
+            try:
+                prompt_text = input("\nJack: ")
+                if prompt_text.strip() == "":
+                    continue
+                if prompt_text.lower() in ["exit", "quit"]:
+                    print("\n--- End of Session ---")
+                    break
+
+                # Save Jack's message
+                save_dialogue("Jack", prompt_text)
+                messages.append({'role': 'user', 'content': prompt_text})
+
+                # Send the request to the LLM
+                print("\nGemni: ", end="", flush=True)
+                full_response = ""
+
+                response = await client.post(
+                    OLLAMA_URL,
+                    json={
+                        "model": MODEL_NAME,
+                        "messages": messages,
+                        "stream": True
+                    },
+                    headers={"Accept": "application/x-ndjson"}
+                )
+
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
+                    try:
+                        part = httpx.Response.json(httpx.Response(200, content=line))
+                        chunk = part['message']['content']
+                        print(chunk, end='', flush=True)
+                        full_response += chunk
+                    except Exception as e:
+                        ic(f"Stream parse error: {e}")
+                        continue
+
+                # Save Gemni's full reply
+                save_dialogue("Gemni", full_response)
+                messages.append({'role': 'assistant', 'content': full_response})
+
+            except (KeyboardInterrupt, EOFError):
+                print("\n--- End of Session ---")
+                break
+            except Exception as e:
+                ic(f"An error occurred: {e}")
+                break
+
+
+
+if __name__ == "__main__":
+    # Set up the database first
+    setup_database()
+
+    # Run the async interactive chat session
+    asyncio.run(run_interactive_chat())
+
+import aiohttp
+import asyncio
+import sqlite3
+import json
+from icecream import ic
+
+# ====== CONFIG ======
+DB_FILE = "scifi_chat.db"
+VPS_URL = "http://31.97.146.63:11444/api/chat"
+MODEL_NAME = "phi3:mini"
+
+# ====== DATABASE ======
+def setup_database():
+    ic("Setting up database...")
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS dialogue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            speaker TEXT,
+            message TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+    ic("Database ready.")
+
+def save_message(speaker, message):
+    ic(f"Saving dialogue for: {speaker}")
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO dialogue (speaker, message) VALUES (?, ?)", (speaker, message))
+    conn.commit()
+    conn.close()
+    ic(f"Saved {speaker} message.")
+
+# ====== VPS CHAT ======
+async def query_vps(messages):
+    """Send chat messages to the VPS and return a single complete response."""
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "stream": False
+    }
+    ic(f"Connecting to VPS at {VPS_URL}")
+    async with aiohttp.ClientSession() as session:
+        async with session.post(VPS_URL, json=payload) as resp:
+            ic(f"Connected, HTTP status: {resp.status}")
+            data = await resp.json()
+            ic("Response JSON received", data)
+            if "message" in data and "content" in data["message"]:
+                return data["message"]["content"]
+            return "[No response from VPS]"
+
+# ====== MAIN LOOP ======
+async def main():
+    setup_database()
+
+    messages = [
+        {"role": "system", "content": (
+            "You are a creative co-host on a science fiction podcast. "
+            "Your name is Ollama. The user is your co-host, Jack. "
+            "Engage in a fun, creative banter about sci-fi topics."
+        )}
+    ]
+
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} (VPS) ---")
+    print("Type 'exit' or 'quit' to end the session.\n")
+
+    while True:
+        user_input = input("Jack: ").strip()
+        if user_input.lower() in ["exit", "quit"]:
+            break
+
+        save_message("Jack", user_input)
+        messages.append({"role": "user", "content": user_input})
+
+        response_text = await query_vps(messages)
+        # After receiving response_text from VPS
+        clean_text = "\n".join(
+            line for line in response_text.splitlines()
+            if not line.strip().startswith("## Instruction")
+        )
+        print(f"Ollama: {clean_text}")
+        save_message("Ollama", clean_text)
+        '''
+
+        print(f"Ollama: {response_text}")
+
+        save_message("Ollama", response_text)
+        messages.append({"role": "assistant", "content": response_text})
+        '''
+if __name__ == "__main__":
+    asyncio.run(main())
+#!/usr/bin/env python3
+import aiohttp
+import asyncio
+import sqlite3
+import datetime
+from icecream import ic
+
+# --- Configuration ---
+MODEL_NAME = "phi3:mini"  # Must match the model loaded on your VPS
+VPS_URL = "http://31.97.146.63:11444/api/chat"  # VPS Ollama chat endpoint
+DB_NAME = "chat_history.db"
+
+def setup_database():
+    """Sets up the SQLite database and table."""
+    ic("Setting up database...")
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speaker TEXT NOT NULL,
+        dialogue TEXT NOT NULL,
+        timestamp DATETIME NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+    ic("Database ready.")
+
+def save_dialogue(speaker, dialogue):
+    """Saves a piece of dialogue to the database, prepending the speaker name for TTS."""
+    dialogue_with_speaker = f"{speaker}: {dialogue.strip()}"
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversations (speaker, dialogue, timestamp) VALUES (?, ?, ?)",
+        (speaker, dialogue_with_speaker, datetime.datetime.now())
+    )
+    conn.commit()
+    conn.close()
+    ic(f"Saved {speaker} message: {dialogue_with_speaker[:60]}…")
+
+async def query_vps(messages):
+    """
+    Sends a full request to VPS Ollama server (non-streaming) and returns the complete assistant response.
+    """
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "stream": False  # non-streaming for cleaner single response
+    }
+    ic(f"Connecting to VPS at {VPS_URL} with payload:", payload)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(VPS_URL, json=payload) as resp:
+            ic(f"Connected, HTTP status: {resp.status}")
+            if resp.status != 200:
+                raise RuntimeError(f"TTS VPS returned {resp.status}: {await resp.text()}")
+            data = await resp.json()
+            # Covert to string depending on VPS response format
+            if "message" in data and "content" in data["message"]:
+                return data["message"]["content"]
+            elif "completion" in data:  # fallback
+                return data["completion"]
+            else:
+                return str(data)
+
+async def run_interactive_chat():
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} (VPS) ---")
+    print("Type 'exit' or 'quit' to end the session.\n")
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a creative co-host on a science fiction podcast. "
+                       "Your name is Ollama. The user is your co-host, Jack. "
+                       "Engage in fun, creative banter about sci-fi topics."
+        }
+    ]
+
+    while True:
+        try:
+            prompt_text = input("\nJack: ")
+            if not prompt_text.strip():
+                continue
+            if prompt_text.lower() in ["exit", "quit"]:
+                print("\n--- End of Session ---")
+                break
+
+            save_dialogue("Jack", prompt_text)
+            messages.append({"role": "user", "content": prompt_text})
+
+            # Query VPS for assistant response (non-streaming)
+            assistant_response = await query_vps(messages)
+            print(f"\nOllama: {assistant_response}")
+
+            save_dialogue("Ollama", assistant_response)
+            messages.append({"role": "assistant", "content": assistant_response})
+
+        except (KeyboardInterrupt, EOFError):
+            print("\n--- End of Session ---")
+            break
+        except Exception as e:
+            ic(f"Error: {e}")
+            break
+
+if __name__ == "__main__":
+    setup_database()
+    asyncio.run(run_interactive_chat())
+import aiohttp
+import asyncio
+import sqlite3
+import json
+from icecream import ic
+
+# ====== CONFIG ======
+DB_FILE = "scifi_chat.db"
+#VPS_URL = "http://31.97.146.63:11444/api/chat"
+#MODEL_NAME = "phi3:mini"
+# --- Configuration ---
+MODEL_NAME = "mistral:7b"  # Must match the model loaded on your VPS
+VPS_URL = "http://31.97.146.63:11444/api/chat"  # VPS Ollama chat endpoint
+
+# ====== DATABASE ======
+def setup_database():
+    ic("Setting up database...")
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS dialogue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            speaker TEXT,
+            message TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+    ic("Database ready.")
+
+def save_message(speaker, message):
+    ic(f"Saving dialogue for: {speaker}")
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("INSERT INTO dialogue (speaker, message) VALUES (?, ?)", (speaker, message))
+    conn.commit()
+    conn.close()
+    ic(f"Saved {speaker} message.")
+
+# ====== VPS CHAT ======
+async def query_vps(messages):
+    """Send chat messages to the VPS and return a single complete response."""
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "stream": False
+    }
+    ic(f"Connecting to VPS at {VPS_URL}")
+    async with aiohttp.ClientSession() as session:
+        async with session.post(VPS_URL, json=payload) as resp:
+            ic(f"Connected, HTTP status: {resp.status}")
+            data = await resp.json()
+            ic("Response JSON received", data)
+            if "message" in data and "content" in data["message"]:
+                return data["message"]["content"]
+            return "[No response from VPS]"
+
+# ====== MAIN LOOP ======
+async def main():
+    setup_database()
+
+    messages = [
+        {"role": "system", "content": (
+            "You are a creative co-host on a science fiction podcast. "
+            "Your name is Ollama. The user is your co-host, Jack. "
+            "Engage in a fun, creative banter about sci-fi topics."
+        )}
+    ]
+
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} (VPS) ---")
+    print("Type 'exit' or 'quit' to end the session.\n")
+
+    while True:
+        user_input = input("Jack: ").strip()
+        if user_input.lower() in ["exit", "quit"]:
+            break
+
+        save_message("Jack", user_input)
+        messages.append({"role": "user", "content": user_input})
+
+        response_text = await query_vps(messages)
+        # After receiving response_text from VPS
+        clean_text = "\n".join(
+            line for line in response_text.splitlines()
+            if not line.strip().startswith("## Instruction")
+        )
+        print(f"Ollama: {clean_text}")
+        save_message("Ollama", clean_text)
+        '''
+
+        print(f"Ollama: {response_text}")
+
+        save_message("Ollama", response_text)
+        messages.append({"role": "assistant", "content": response_text})
+        '''
+if __name__ == "__main__":
+    asyncio.run(main())
+#!/usr/bin/env python3
+import aiohttp
+import asyncio
+import sqlite3
+import datetime
+from icecream import ic
+
+# --- Configuration ---
+MODEL_NAME = "phi3:mini"  # Must match the model loaded on your VPS
+VPS_URL = "http://31.97.146.63:11444/api/chat"  # VPS Ollama chat endpoint
+DB_NAME = "chat_history.db"
+
+def setup_database():
+    """Sets up the SQLite database and table."""
+    ic("Setting up database...")
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speaker TEXT NOT NULL,
+        dialogue TEXT NOT NULL,
+        timestamp DATETIME NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+    ic("Database ready.")
+
+def save_dialogue(speaker, dialogue):
+    """Saves a piece of dialogue to the database."""
+    ic(f"Saving dialogue for: {speaker}")
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversations (speaker, dialogue, timestamp) VALUES (?, ?, ?)",
+        (speaker, dialogue, datetime.datetime.now())
+    )
+    conn.commit()
+    conn.close()
+    ic(f"Saved {speaker} message.")
+
+async def query_vps_stream(messages):
+    """
+    Streams chat completion from the VPS Ollama server.
+    Yields partial response chunks.
+    """
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "stream": True
+    }
+    ic(f"Connecting to VPS at {VPS_URL} with payload:")
+    ic(payload)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(VPS_URL, json=payload, timeout=350) as resp:
+            ic(f"Connected, HTTP status: {resp.status}")
+            async for line in resp.content:
+                ic(f"Raw line: {line}")
+                if not line.strip():
+                    continue
+                try:
+                    data = line.decode("utf-8")
+                    ic(f"Decoded line: {data}")
+                    if data.startswith("data:"):
+                        data_json = eval(data[5:].strip())  # ⚠ Insecure if public input
+                        ic(f"Parsed JSON: {data_json}")
+                        if "message" in data_json:
+                            chunk = data_json["message"]["content"]
+                            ic(f"Chunk received: {chunk}")
+                            yield chunk
+                except Exception as e:
+                    ic(f"Stream parse error: {e}")
+
+async def run_interactive_chat():
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} (VPS) ---")
+    print("Type 'exit' or 'quit' to end the session.")
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a creative co-host on a science fiction podcast. Your name is Ollama. The user is your co-host, Jack. Engage in a fun, creative banter about sci-fi topics."
+        }
+    ]
+
+    while True:
+        try:
+            prompt_text = input("\nJack: ")
+            if not prompt_text.strip():
+                continue
+            if prompt_text.lower() in ["exit", "quit"]:
+                print("\n--- End of Session ---")
+                break
+
+            save_dialogue("Jack", prompt_text)
+            messages.append({"role": "user", "content": prompt_text})
+            ic(f"Messages so far: {messages}")
+
+            print("\nOllama: ", end="", flush=True)
+            full_response = ""
+            async for chunk in query_vps_stream(messages):
+                print(chunk, end="", flush=True)
+                full_response += chunk
+
+            save_dialogue("Ollama", full_response)
+            messages.append({"role": "assistant", "content": full_response})
+            ic(f"Ollama full response: {full_response}")
+
+        except (KeyboardInterrupt, EOFError):
+            print("\n--- End of Session ---")
+            break
+        except Exception as e:
+            ic(f"Error: {e}")
+            break
+
+if __name__ == "__main__":
+    setup_database()
+    asyncio.run(run_interactive_chat())
+#!/usr/bin/env python3
+import aiohttp
+import asyncio
+import sqlite3
+import datetime
+from icecream import ic
+
+# --- Configuration ---
+#MODEL_NAME = "phi3:mini"  # Must match the model loaded on your VPS
+#MODEL_NAME = "qwen:1.8b"
+MODEL_NAME = "qwen:7b"
+VPS_URL = "http://31.97.146.63:11444/api/chat"  # VPS Ollama chat endpoint
+DB_NAME = "chat_history.db"
+
+def setup_database():
+    """Sets up the SQLite database and table."""
+    ic("Setting up database...")
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speaker TEXT NOT NULL,
+        dialogue TEXT NOT NULL,
+        timestamp DATETIME NOT NULL
+    )
+    """)
+    conn.commit()
+    conn.close()
+    ic("Database ready.")
+
+def save_dialogue(speaker, dialogue):
+    """Saves a piece of dialogue to the database, prepending the speaker name for TTS."""
+    dialogue_with_speaker = f"{speaker}: {dialogue.strip()}"
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversations (speaker, dialogue, timestamp) VALUES (?, ?, ?)",
+        (speaker, dialogue_with_speaker, datetime.datetime.now())
+    )
+    conn.commit()
+    conn.close()
+    ic(f"Saved {speaker} message: {dialogue_with_speaker[:60]}…")
+
+async def query_vps(messages):
+    """
+    Sends a full request to VPS Ollama server (non-streaming) and returns the complete assistant response.
+
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "stream": False  # non-streaming for cleaner single response
+    }
+    """
+    payload = {
+      "model": "mistral:7b",
+      "messages": messages,
+      "stream": False,
+      "options": {
+          "temperature": 0.7,
+          "top_p": 0.9,
+          "repeat_penalty": 1.1
+      },
+      "keep_alive": "5m"
+    }
+
+    ic(f"Connecting to VPS at {VPS_URL} with payload:", payload)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(VPS_URL, json=payload) as resp:
+            ic(f"Connected, HTTP status: {resp.status}")
+            if resp.status != 200:
+                raise RuntimeError(f"TTS VPS returned {resp.status}: {await resp.text()}")
+            data = await resp.json()
+            # Covert to string depending on VPS response format
+            if "message" in data and "content" in data["message"]:
+                return data["message"]["content"]
+            elif "completion" in data:  # fallback
+                return data["completion"]
+            else:
+                return str(data)
+
+async def run_interactive_chat():
+    print(f"--- Starting Interactive Podcast Banter with {MODEL_NAME} (VPS) ---")
+    print("Type 'exit' or 'quit' to end the session.\n")
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a creative co-host on a science fiction podcast. "
+                       "Your name is Ollama. The user is your co-host, Jack. "
+                       "Engage in fun, creative banter about sci-fi topics."
+        }
+    ]
+
+    while True:
+        try:
+            prompt_text = input("\nJack: ")
+            if not prompt_text.strip():
+                continue
+            if prompt_text.lower() in ["exit", "quit"]:
+                print("\n--- End of Session ---")
+                break
+
+            save_dialogue("Jack", prompt_text)
+            messages.append({"role": "user", "content": prompt_text})
+
+            # Query VPS for assistant response (non-streaming)
+            assistant_response = await query_vps(messages)
+            print(f"\nOllama: {assistant_response}")
+
+            save_dialogue("Ollama", assistant_response)
+            messages.append({"role": "assistant", "content": assistant_response})
+
+        except (KeyboardInterrupt, EOFError):
+            print("\n--- End of Session ---")
+            break
+        except Exception as e:
+            ic(f"Error: {e}")
+            break
+
+if __name__ == "__main__":
+    setup_database()
+    asyncio.run(run_interactive_chat())
+#!/usr/bin/env python3
+
+import os
+import chromadb
+from chromadb.config import Settings
+from icecream import ic
+
+# --- CONFIG ---
+PERSIST_DIR = "./alien_chroma"
+COLLECTION_NAME = "arcanian_entity"
+ALIEN_FILE = "alien.txt"
+
+# --- Initialize ChromaDB client ---
+client = chromadb.PersistentClient(path=PERSIST_DIR)
+
+# --- Create or get collection ---
+collection = client.get_or_create_collection(COLLECTION_NAME)
+ic(f"Using collection: {COLLECTION_NAME}")
+
+# --- Load alien.txt line by line ---
+if not os.path.exists(ALIEN_FILE):
+    ic(f"Missing {ALIEN_FILE}! Please create it with one sentence per line.")
+    exit(1)
+
+with open(ALIEN_FILE, "r", encoding="utf-8") as f:
+    lines = [line.strip() for line in f if line.strip()]
+
+ic(f"Loaded {len(lines)} alien sentences from {ALIEN_FILE}")
+
+# --- Insert into collection ---
+for i, entry in enumerate(lines):
+    doc_id = f"alien_{i}"
+    collection.add(
+        documents=[entry],
+        ids=[doc_id],
+        metadatas=[{"origin": "arcanians", "line": i}],
+    )
+    ic(f"Seeded entry {i}: {entry}")
+
+# --- Quick sanity check ---
+results = collection.query(
+    query_texts=["Who are you?"],
+    n_results=2
+)
+ic("Query results:", results)
