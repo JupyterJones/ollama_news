@@ -1,0 +1,5 @@
+{
+  "name": "Ollama Model Finder",
+  "description": "An intelligent assistant to help you discover new, small, CPU-runnable Ollama models based on the ones you already have.",
+  "requestFramePermissions": []
+}
